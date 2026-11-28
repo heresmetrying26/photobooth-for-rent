@@ -1800,18 +1800,26 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKSc
     // booth made (the page is already the size of the paper chosen in Print settings). Among papers of that size it prefers
     // the one that prints edge to edge (a "borderless" entry), so the border is as thin as the printer allows.
     func printInteractionController(_ printInteractionController: UIPrintInteractionController, choosePaper paperList: [UIPrintPaper]) -> UIPrintPaper {
+        guard !paperList.isEmpty else { return paperList[0] }
         let w = airPrintPageSize.width
         let h = airPrintPageSize.height
-        func score(_ paper: UIPrintPaper) -> CGFloat {
+        func gap(_ paper: UIPrintPaper) -> CGFloat {
             let pw = paper.paperSize.width
             let ph = paper.paperSize.height
-            let straight = abs(pw - w) + abs(ph - h)
-            let turned = abs(pw - h) + abs(ph - w)
-            let sizeGap = min(straight, turned)                          // how far the paper is from the page (a turned paper is fine)
-            let unprintable = (pw * ph) - (paper.printableRect.width * paper.printableRect.height)
-            return sizeGap * 100000 + unprintable                        // size first, then the thinnest unprintable border
+            return min(abs(pw - w) + abs(ph - h), abs(pw - h) + abs(ph - w))
         }
-        return paperList.min { score($0) < score($1) } ?? paperList[0]      // iPadOS never sends an empty list
+        func unprintable(_ paper: UIPrintPaper) -> CGFloat {
+            return max(0, (paper.paperSize.width * paper.paperSize.height) - (paper.printableRect.width * paper.printableRect.height))
+        }
+        let minGap = paperList.map(gap).min() ?? 0
+        // Borderless photo papers (e.g. Canon SELPHY Postcard Fullbleed) may report 1-4 pt extra bleed over the nominal sheet size;
+        // prefer the thinnest unprintable border among all candidate papers within 6 pt of the closest size match.
+        let near = paperList.filter { gap($0) <= minGap + 6.0 }
+        return (near.isEmpty ? paperList : near).min { a, b in
+            let ua = unprintable(a), ub = unprintable(b)
+            if abs(ua - ub) > 1.0 { return ua < ub }
+            return gap(a) < gap(b)
+        } ?? paperList[0]
     }
 
     private func presentPrintController(_ controller: UIPrintInteractionController, attempt: Int = 0, onPresented: (() -> Void)? = nil, completion: (() -> Void)? = nil) {
@@ -3340,15 +3348,23 @@ enum IppNet {
         let mt = selphy ? "" : mediaTypeKeyword(media, caps.mediaTypes, hardEpsonL)
         let hasOpts = qv != 0 || !cm.isEmpty || !mt.isEmpty
         var attempts: [JobAttempt] = []
-        if selphy, let matched = selphyMedia(caps, wMm: wMm, hMm: hMm) {
-            // Canon SELPHY CP1300 / CP1500 fullbleed over IPP uses its exact paper dimensions (e.g. 100x148 mm) with 0 margins and scaling=fill.
+        if selphy {
+            let matched = selphyMedia(caps, wMm: wMm, hMm: hMm)
+            let a = min(wMm, hMm), b = max(wMm, hMm)
+            let fallbackDims: (Double, Double) = (a >= 95 && a <= 106 && b >= 142 && b <= 158) ? (100.0, 148.0) : (a, b)
+            let zmW = matched?.w ?? fallbackDims.0
+            let zmH = matched?.h ?? fallbackDims.1
+            // Canon SELPHY CP1300 / CP1500 fullbleed over IPP uses exact sheet dimensions with 0 margins (trying fill, none, and default scaling) before bordered named media.
             attempts = [
-                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: "fill", marginMm100: 0),
-                JobAttempt(wMm: matched.w, hMm: matched.h, mediaName: "", useOpts: false, scaling: "", marginMm100: 0),
-                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: "fill", marginMm100: 0),
-                JobAttempt(wMm: 0, hMm: 0, mediaName: matched.name, useOpts: false, scaling: "", marginMm100: 0),
-                JobAttempt(wMm: 0, hMm: 0, mediaName: "", useOpts: false, scaling: "", marginMm100: 0)
+                JobAttempt(wMm: zmW, hMm: zmH, mediaName: "", useOpts: false, scaling: "fill", marginMm100: 0),
+                JobAttempt(wMm: zmW, hMm: zmH, mediaName: "", useOpts: false, scaling: "none", marginMm100: 0),
+                JobAttempt(wMm: zmW, hMm: zmH, mediaName: "", useOpts: false, scaling: "", marginMm100: 0)
             ]
+            if let m = matched {
+                attempts.append(JobAttempt(wMm: 0, hMm: 0, mediaName: m.name, useOpts: false, scaling: "fill", marginMm100: 0))
+                attempts.append(JobAttempt(wMm: 0, hMm: 0, mediaName: m.name, useOpts: false, scaling: "", marginMm100: 0))
+            }
+            attempts.append(JobAttempt(wMm: 0, hMm: 0, mediaName: "", useOpts: false, scaling: "", marginMm100: 0))
         } else {
             let ownScaling = borderless ? "none" : "fill"
             let rawAttempts: [(Bool, Bool, String, Int)]

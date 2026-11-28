@@ -95,6 +95,7 @@ function Handle-Print($req) {
   $MediaType = if ($req.mediaType) { [string]$req.mediaType } else { '' }
   $Borderless = [bool]$req.borderless
   $DyeSub = [bool]$req.dyeSub
+  $Selphy = [bool]$req.selphy
   $CustomW = if ($req.customW) { [int]$req.customW } else { 0 }
   $CustomH = if ($req.customH) { [int]$req.customH } else { 0 }
   $ActualW = if ($req.actualW) { [int]$req.actualW } else { 0 }
@@ -222,7 +223,7 @@ function Handle-Print($req) {
       } catch { & $addLog ('warn|Custom paper size could not be applied: ' + $_.Exception.Message) }
     }
 
-    if ($Borderless -and -not $DyeSub) {
+    $applyBorderlessTicket = {
       try {
         $bq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
         $bc = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $bq.ClientPrintSchemaVersion)
@@ -236,9 +237,9 @@ function Handle-Print($req) {
         $bf = $bx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']")
         $bcx = [xml]([IO.StreamReader]::new($bq.GetPrintCapabilitiesAsXml()).ReadToEnd())
         $bhas = $bcx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option' and @name='psk:Borderless']")
-        if ($bf -and $bhas -and $bf.GetAttribute('name') -ne 'psk:Borderless') {
-          $bf.SetAttribute('name', 'psk:Borderless')
-          $bd = New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($bx.OuterXml))))
+        if ($bhas -and (-not $bf -or $bf.GetAttribute('name') -ne 'psk:Borderless')) {
+          $bxml = if ($bf) { $bf.SetAttribute('name', 'psk:Borderless'); $bx.OuterXml } else { '<psf:PrintTicket xmlns:psf="http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework" xmlns:psk="http://schemas.microsoft.com/windows/2003/08/printing/printschemakeywords" version="1"><psf:Feature name="psk:PageBorderless"><psf:Option name="psk:Borderless"/></psf:Feature></psf:PrintTicket>' }
+          $bd = New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($bxml))))
           $bv = $bq.MergeAndValidatePrintTicket($bt, $bd).ValidatedPrintTicket
           $bvx = [xml]([IO.StreamReader]::new($bv.GetXmlStream()).ReadToEnd())
           $bvo = $bvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']")
@@ -253,6 +254,8 @@ function Handle-Print($req) {
         }
       } catch { & $addLog ('info|borderless not set: ' + $_.Exception.Message) }
     }
+    if ($Borderless -and -not $DyeSub) { & $applyBorderlessTicket }
+    elseif ($Borderless -and $Selphy) { & $applyBorderlessTicket }
 
     $l8050Mode = ''; $l8050Level = 2
     if ($l8050) {

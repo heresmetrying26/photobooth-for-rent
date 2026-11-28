@@ -7,7 +7,8 @@
 // The internet is only needed to activate (or paste an offline key) and, for a
 // lifetime code, once every few weeks to renew the licence.
 import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, powerMonitor, screen, clipboard } from 'electron';
-import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
+import { appendFile, stat, writeFile } from 'node:fs/promises';
 import { join, dirname, normalize, extname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDecipheriv, createHash } from 'node:crypto';
@@ -30,6 +31,8 @@ import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotFixFirewall, hotspotSetCreds, hotspotWake, hotspotTouch, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
 import { freeCamera, guardCamera, stopGuardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
+import { stopUsbEnum } from './lib/usb-enum.mjs';
+import { evaluateGraphicsMode, buildChromiumSwitches, markStartupBegin, markStartupReady, recordGpuCrash, recordUnresponsive, markAutoRelaunch, setManualSafeGraphics, graphicsStatusSummary } from './lib/stability.mjs';
 import * as U from './lib/updater.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -41,33 +44,47 @@ const KEY_A = 'pb4u·desk·7f3c1e9a';
 const DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec';
 const CLOUD_API_PATHS = new Set(['/api/ticket', '/api/guestview', '/api/events', '/api/printreq', '/api/pay', '/api/gallery']);
 
-// Graphics. Chromium keeps its own list of graphics drivers that crash or glitch and switches the risky features
-// off for them, so the app no longer overrides that list (ignore-gpu-blocklist) or forces zero-copy: an old laptop
-// with a bad driver draws a little slower instead of crashing, and good laptops keep full acceleration.
-// (Also gone: VaapiVideoDecoder, which is Linux-only, and CanvasOopRasterization, which hangs old Intel HD drivers.)
-// Safe graphics: when the graphics process crashes twice within a week, that is remembered in graphics.json (next
-// to settings.json) and the app starts with acceleration off on this laptop for 30 days, then tries again (a driver
-// update may have fixed it). Deleting graphics.json turns acceleration back on at once.
-const gfxFile = () => join(app.getPath('userData'), 'graphics.json');
-const DAY = 24 * 60 * 60 * 1000;
-let gfx = {};
-try { gfx = JSON.parse(readFileSync(gfxFile(), 'utf8')) || {}; } catch { gfx = {}; }
-const SAFE_GFX = !!gfx.safeAt && Date.now() - gfx.safeAt < 30 * DAY;
-if (SAFE_GFX) { app.disableHardwareAcceleration(); console.log('[graphics] safe graphics: acceleration is off on this laptop'); }
-else app.commandLine.appendSwitch('enable-gpu-rasterization');
+// Graphics & hang protection (see lib/stability.mjs).
+// On Windows, disable SkiaGraphite (stay on Ganesh + ANGLE D3D11) and never force enable-gpu-rasterization:
+// Intel UHD / Iris Xe and AMD Radeon drivers (e.g. ASUS VivoBook) can deadlock under Graphite/Dawn or forced
+// rasterization and freeze the window as "(Not Responding)". Safe Graphics turns hardware acceleration off
+// automatically after sustained freezes, repeated startup hangs, or GPU crashes (and clears stale shader caches).
+const gfxEval = evaluateGraphicsMode({ dataDir: app.getPath('userData'), argv: process.argv });
+const SAFE_GFX = gfxEval.safe;
+const GFX_REASON = gfxEval.reason;
+const gfxCfg = buildChromiumSwitches({ platform: process.platform, safe: SAFE_GFX });
+if (gfxEval.clearedCaches.length) console.log('[graphics] cleared stale GPU cache(s): ' + gfxEval.clearedCaches.join(', '));
+if (gfxEval.sawStartupHang) console.log('[graphics] previous start did not finish cleanly');
+if (gfxCfg.disableHardwareAcceleration) {
+  app.disableHardwareAcceleration();
+  console.log('[graphics] safe graphics (' + GFX_REASON + '): acceleration is off on this laptop');
+}
+for (const [sw, val] of gfxCfg.switches) app.commandLine.appendSwitch(sw, val);
+
+let logQueue = Promise.resolve();
+function writeCamLogAsync(m) {
+  let camLog = '';
+  try { camLog = join(app.getPath('userData'), 'camera.log'); } catch { return; }
+  const line = new Date().toISOString() + ' ' + m + '\n';
+  logQueue = logQueue.then(async () => {
+    try {
+      await appendFile(camLog, line, 'utf8');
+      const st = await stat(camLog);
+      if (st.size > 512 * 1024) await writeFile(camLog, line, 'utf8');
+    } catch { /* the log is a convenience */ }
+  });
+}
+
 app.on('child-process-gone', (e, d) => {
   if (!d || d.type !== 'GPU' || d.reason === 'clean-exit' || d.reason === 'killed') return;
   console.log('[graphics] the graphics process stopped: ' + d.reason);
-  if (SAFE_GFX) return;
-  try {
-    const now = Date.now();
-    gfx.crashes = (Array.isArray(gfx.crashes) ? gfx.crashes : []).filter((t) => now - t < 7 * DAY).concat(now);
-    if (gfx.crashes.length >= 2) { gfx.safeAt = now; gfx.crashes = []; console.log('[graphics] crashed twice: safe graphics from the next start'); }
-    writeFileSync(gfxFile(), JSON.stringify(gfx));
-  } catch { /* ignore */ }
+  writeCamLogAsync('[graphics] GPU process stopped: ' + d.reason);
+  const res = recordGpuCrash({ dataDir: app.getPath('userData'), reason: d.reason, safe: SAFE_GFX });
+  if (res.switchedToSafe) {
+    console.log('[graphics] switched to safe graphics from the next start');
+    writeCamLogAsync('[graphics] switched to safe graphics from the next start');
+  }
 });
-app.commandLine.appendSwitch('force-color-profile', 'srgb');
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,MediaFoundationVideoCapture');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
@@ -77,6 +94,7 @@ protocol.registerSchemesAsPrivileged([{
 }]);
 
 let win = null, photomanWin = null, blocker = null, settings = {};
+let isQuitting = false, clockTimer = null, checkinTimer = null;
 function broadcastWin(channel, data) {
   [win, photomanWin].forEach((w) => {
     try { if (w && !w.isDestroyed()) w.webContents.send(channel, data); } catch { /* ignore */ }
@@ -318,17 +336,128 @@ function openOutside(u) {
 const isOurs = (u) => { try { const x = new URL(u); return x.protocol === 'app:' && x.host === 'booth'; } catch { return false; } };
 const isLocalPage = (u) => { try { const x = new URL(u); return isOurs(u) && (x.pathname === '/' || x.pathname.startsWith('/pay/') || x.pathname.startsWith('/app/') || x.pathname === '/activate'); } catch { return false; } };
 
+function relaunchArgs(extra = []) {
+  const base = process.argv.slice(1).filter((a) => a !== '--safe-graphics' && a !== '--disable-gpu');
+  return base.concat(Array.isArray(extra) ? extra : []);
+}
+
+function cleanupForExit() {
+  if (blocker !== null) {
+    try { if (powerSaveBlocker.isStarted(blocker)) powerSaveBlocker.stop(blocker); } catch { /* ignore */ }
+    blocker = null;
+  }
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+  if (checkinTimer) { clearInterval(checkinTimer); checkinTimer = null; }
+  try { markStartupReady(dataDir()); } catch { /* ignore */ }
+  try { stopSensor(); } catch { /* ignore */ }
+  try { stopUsbEnum(); } catch { /* ignore */ }
+  try { stopHelper(); } catch { /* ignore */ }
+  try { stopShareServer(); } catch { /* ignore */ }
+  try { hotspotStopOnQuit(); } catch { /* ignore */ }
+  try { stopGuardCamera(); } catch { /* ignore */ }
+  try { L.touchClock(); } catch { /* ignore */ }
+}
+
+function attachStabilityWatchdogs(targetWin, { primary = false, reloadUrl = ORIGIN + '/' } = {}) {
+  let unrespTimer = null;
+  let reloadHits = [];
+  const allowReload = (maxCount, windowMs) => {
+    const now = Date.now();
+    reloadHits = reloadHits.filter((t) => now - t < windowMs);
+    if (reloadHits.length >= maxCount) return false;
+    reloadHits.push(now);
+    return true;
+  };
+  const clearUnresp = () => { if (unrespTimer) { clearTimeout(unrespTimer); unrespTimer = null; } };
+
+  targetWin.on('unresponsive', () => {
+    if (isQuitting || targetWin.isDestroyed()) return;
+    console.log('[stability] window became unresponsive');
+    writeCamLogAsync('[stability] window became unresponsive (safeGfx=' + SAFE_GFX + ')');
+    clearUnresp();
+    unrespTimer = setTimeout(() => {
+      unrespTimer = null;
+      if (isQuitting || targetWin.isDestroyed()) return;
+      console.log('[stability] window stayed unresponsive for 12 s');
+      writeCamLogAsync('[stability] window stayed unresponsive for 12 s');
+      const res = recordUnresponsive({ dataDir: dataDir(), safe: SAFE_GFX });
+      if (primary && res.canAutoRelaunch) {
+        console.log('[stability] switching to safe graphics and restarting automatically');
+        writeCamLogAsync('[stability] auto-relaunching in safe graphics mode');
+        markAutoRelaunch({ dataDir: dataDir() });
+        isQuitting = true;
+        cleanupForExit();
+        app.relaunch({ args: relaunchArgs(['--safe-graphics']) });
+        app.exit(0);
+        return;
+      }
+      if (allowReload(2, 5 * 60 * 1000)) {
+        try { targetWin.webContents.reloadIgnoringCache(); } catch { /* ignore */ }
+      }
+    }, 12000);
+  });
+
+  targetWin.on('responsive', () => {
+    if (unrespTimer) {
+      clearUnresp();
+      console.log('[stability] window became responsive again');
+      writeCamLogAsync('[stability] window became responsive again');
+    }
+  });
+
+  targetWin.webContents.on('render-process-gone', (e, d) => {
+    if (isQuitting || targetWin.isDestroyed()) return;
+    const reason = (d && d.reason) || 'unknown';
+    if (reason === 'clean-exit') return;
+    console.log('[stability] renderer stopped: ' + reason);
+    writeCamLogAsync('[stability] renderer stopped: ' + reason);
+    if (reason === 'crashed' || reason === 'oom') {
+      recordGpuCrash({ dataDir: dataDir(), reason: 'renderer-' + reason, safe: SAFE_GFX });
+    }
+    if (allowReload(3, 60000)) {
+      setTimeout(() => {
+        if (!isQuitting && !targetWin.isDestroyed()) {
+          try { targetWin.loadURL(reloadUrl); } catch { /* ignore */ }
+        }
+      }, 600);
+    }
+  });
+
+  targetWin.on('closed', () => { clearUnresp(); });
+}
+
 function createWindow() {
+  if (!SAFE_GFX) markStartupBegin(dataDir());
   win = new BrowserWindow({
     width: 1366, height: 860, minWidth: 900, minHeight: 600, show: false, backgroundColor: '#F5F1EA',
     title: 'photobooth4u', icon: existsSync(join(HERE, 'resources', 'icon.png')) ? join(HERE, 'resources', 'icon.png') : undefined,
     autoHideMenuBar: true,
     webPreferences: { preload: join(HERE, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, backgroundThrottling: false }
   });
-  win.once('ready-to-show', () => { win.maximize(); win.show(); });
+  let shown = false;
+  const showNow = () => {
+    if (shown || !win || win.isDestroyed()) return;
+    shown = true;
+    clearTimeout(showFallback);
+    win.maximize();
+    win.show();
+  };
+  const showFallback = setTimeout(showNow, 6000);
+  if (showFallback.unref) showFallback.unref();
+  win.once('ready-to-show', showNow);
+  win.webContents.once('did-finish-load', () => {
+    const t = setTimeout(() => {
+      if (isQuitting || !win || win.isDestroyed()) return;
+      win.webContents.executeJavaScript('1', false).then(() => { markStartupReady(dataDir()); }, () => { /* still wedged */ });
+    }, 5000);
+    if (t.unref) t.unref();
+  });
+  attachStabilityWatchdogs(win, { primary: true, reloadUrl: ORIGIN + '/' });
   wireContents(win.webContents);
   win.loadURL(ORIGIN + '/');
   win.on('closed', () => {
+    clearTimeout(showFallback);
+    markStartupReady(dataDir());
     win = null;
     if (photomanWin && !photomanWin.isDestroyed()) { try { photomanWin.close(); } catch { /* ignore */ } }
   });
@@ -362,6 +491,7 @@ function createPhotomanWindow() {
     photomanWin.show();
     if (win && !win.isDestroyed()) win.webContents.send('pb4u:photomanState', { open: true });
   });
+  attachStabilityWatchdogs(photomanWin, { primary: false, reloadUrl: ORIGIN + '/?desk=photoman' });
   wireContents(photomanWin.webContents);
   photomanWin.loadURL(ORIGIN + '/?desk=photoman');
   photomanWin.on('closed', () => {
@@ -473,9 +603,33 @@ function buildMenu() {
 const ipadAllowed = () => { const s = L.status(); return !!(s.p && s.p.feat && s.p.feat.ipadOpt === true); };
 
 // ---------- IPC (preload.cjs) ----------
+let lanBaseCache = { at: 0, value: null };
+function shareBaseCached() {
+  const now = Date.now();
+  if (now - lanBaseCache.at < 2000) return lanBaseCache.value;
+  lanBaseCache = { at: now, value: shareBase() };
+  return lanBaseCache.value;
+}
+function invalidateLanCache() { lanBaseCache.at = 0; }
+
 function wireIpc() {
-  ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
+  ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBaseCached(); });
   ipcMain.on('pb4u:localBase', (e) => { const p = sharePortNow(); e.returnValue = p ? ('http://127.0.0.1:' + p) : null; });
+  ipcMain.handle('pb4u:graphicsInfo', () => graphicsStatusSummary({ dataDir: dataDir(), activeSafe: SAFE_GFX, activeReason: GFX_REASON }));
+  ipcMain.handle('pb4u:setSafeGraphics', (e, mode, restart) => {
+    const cleanMode = mode === 'on' ? 'on' : mode === 'off' ? 'off' : 'auto';
+    const r = setManualSafeGraphics({ dataDir: dataDir(), mode: cleanMode });
+    const out = { ok: true, ...r, ...graphicsStatusSummary({ dataDir: dataDir(), activeSafe: SAFE_GFX, activeReason: GFX_REASON }) };
+    if (restart) {
+      setTimeout(() => {
+        isQuitting = true;
+        cleanupForExit();
+        app.relaunch({ args: relaunchArgs(cleanMode === 'on' ? ['--safe-graphics'] : []) });
+        app.exit(0);
+      }, 150);
+    }
+    return out;
+  });
   // Reconnect an Instax printer that was set up before. Chromium only opens the Bluetooth chooser for a tap, so the booth
   // asks here and the app runs the request "as a tap" itself; the printer is taken by its name and the operator is not asked.
   let btQueue = Promise.resolve();
@@ -514,6 +668,7 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
   ipcMain.handle('pb4u:hotspotFixFirewall', async () => { const r = await hotspotFixFirewall(); return { ...r, info: hotspotInfo() }; });
+  ipcMain.handle('pb4u:vgFinalize', async (e, req) => SPIN.finalizeGuestbookVideo(req || {}));
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER,
     appMode: allowedAppMode(), onlineMode: isOnlineMode()
@@ -884,28 +1039,19 @@ function wireIpc() {
   });
 }
 
-let isQuitting = false;
-let clockTimer = null, checkinTimer = null;
-app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+app.on('second-instance', () => {
+  if (win && !win.isDestroyed()) {
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+  }
+});
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', () => {
   if (isQuitting) return;
   isQuitting = true;
-  if (blocker !== null) {
-    try {
-      if (powerSaveBlocker.isStarted(blocker)) powerSaveBlocker.stop(blocker);
-    } catch { /* ignore */ }
-    blocker = null;
-  }
-  if (clockTimer) clearInterval(clockTimer);
-  if (checkinTimer) clearInterval(checkinTimer);
   try { U.installOnQuit(); } catch { /* ignore */ }
-  try { stopSensor(); } catch { /* ignore */ }
-  stopHelper();
-  stopShareServer();
-  hotspotStopOnQuit();
-  stopGuardCamera();
-  try { L.touchClock(); } catch { /* ignore */ }
+  cleanupForExit();
 });
 
 app.whenReady().then(async () => {
@@ -932,10 +1078,10 @@ app.whenReady().then(async () => {
   const fxResDir = (existsSync(userFxDir) && existsSync(join(userFxDir, 'catalog.json'))) ? userFxDir : (existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : null);
   SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u'), fxDir: fxResDir, resume: true });
   // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that
-  // hangs can be diagnosed afterwards. It starts over when it passes 512 KB.
-  const camLog = join(dataDir(), 'camera.log');
+  // hangs can be diagnosed afterwards. Written asynchronously so disk/AV scanning never blocks the main UI thread.
   initHelper({
     workerPath: join(BUILD, 'camera-worker.ps1'),
+    deferWarm: true,
     shrinkPage: makeShrinkPage(nativeImage),
     toJpeg: makePngToJpeg(nativeImage),
     selphyJob: makeSelphyJobBuilder(nativeImage),
@@ -952,11 +1098,7 @@ app.whenReady().then(async () => {
     spinInboxDir: () => spinDirNow() || '',
     logger: (m) => {
       console.log('[helper] ' + m);
-      try {
-        const line = new Date().toISOString() + ' ' + m + '\n';
-        appendFileSync(camLog, line);
-        if (statSync(camLog).size > 512 * 1024) writeFileSync(camLog, line);
-      } catch { /* the log is a convenience */ }
+      writeCamLogAsync(m);
     }
   });
   if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
@@ -1025,8 +1167,9 @@ app.whenReady().then(async () => {
     get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m),
     dir: app.getPath('userData'),   // where the "hotspot is starting" crash marker lives
     skipAuto: isOnlineMode(),
+    isOffline: () => !isOnlineMode(),
     // The page hears about every change (on, off, locked), so its Join QR stays right without polling.
-    onChange: (i) => { broadcastWin('pb4u:hotspotChanged', i); }
+    onChange: (i) => { invalidateLanCache(); broadcastWin('pb4u:hotspotChanged', i); }
   });
   if (settings.hotspot && settings.hotspot.ssid) setExternalWifi(settings.hotspot.ssid, settings.hotspot.pass);
   // Never sleep with the hotspot running (a common cause of Wi-Fi driver crashes on wake); it comes back after wake.

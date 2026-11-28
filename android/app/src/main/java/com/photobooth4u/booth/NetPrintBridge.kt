@@ -3191,16 +3191,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // are sent anyway; if the printer refuses them, the attempts below drop them one at a time.
         // The same goes for an Epson L8050 on Wi-Fi (known by the name it gives): a client's Xiaomi Pad 5 sent none of the settings over
         // Wi-Fi, so the printer used plain paper at standard quality (banding lines, no borderless) where the Epson app printed it sharp.
-        val hardEpsonL = e.usbDev?.let { EpsonLModels.isKnown(it) } == true ||
-            (e.usbDev == null && Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])").containsMatchIn(e.model + " " + e.name))
-        val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high", "high720" -> 5; else -> 0 }
+        val selphy = isSelphy(e)
+        val hardEpsonL = !selphy && (e.usbDev?.let { EpsonLModels.isKnown(it) } == true ||
+            (e.usbDev == null && Regex("(?i)(?:^|[^A-Za-z0-9])L8050(?![0-9])").containsMatchIn(e.model + " " + e.name)))
+        val q = if (selphy) 0 else when (opts.quality) { "draft" -> 3; "normal" -> 4; "high", "high720" -> 5; else -> 0 }
         val qv = if (q != 0 && (q in e.qualities || hardEpsonL)) q else 0
         val cm = when {
             opts.color == "mono" && "monochrome" in e.colorModes -> "monochrome"
             opts.color == "color" && "color" in e.colorModes -> "color"
             else -> ""
         }
-        val mt = when (opts.media) {
+        val mt = if (selphy) "" else when (opts.media) {
             "plain" -> e.mediaTypes.firstOrNull { it == "stationery" } ?: e.mediaTypes.firstOrNull { it.startsWith("stationery") } ?: (if (hardEpsonL) "stationery" else "")
             "inkjet" -> e.mediaTypes.firstOrNull { it == "stationery-inkjet" } ?: e.mediaTypes.firstOrNull { it.contains("inkjet", true) } ?: ""
             "photo", "photopg" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: (if (hardEpsonL) "photographic-glossy" else "")
@@ -3236,10 +3237,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             )
         }
         var lastErr = "The printer didn't accept the job."
-        // A Canon SELPHY has only a few fixed papers (postcard, L, card) and often refuses a custom size such as 101.6 x 152.4 mm,
-        // so name the loaded paper itself first ("jpn_hagaki_100x148mm") and fall back to the custom size after that.
-        val selphy = isSelphy(e)
-        val named = if (selphy) selphyMedia(e, wMm, hMm, opts.borderless) else null
+        // A Canon SELPHY has only a few fixed papers (postcard 100x148 mm, L 89x119 mm, card 54x86 mm).
+        // Over IPP, sending media="jpn_hagaki_100x148mm" alone prints with white borders; borderless full-bleed requires
+        // media-col with exact sheet dimensions and all four margins = 0 (matching Desktop & iPad IPP and wired USB SELPHY).
+        val named = if (selphy) selphyMedia(e, wMm, hMm, true) else null
         val ownScaling = if (opts.borderless) "none" else "fill"
         // Try ideal zero-margin borderless settings first, then drop print-scaling (some non-AirPrint printers reject "none" even when they
         // support zero-margin media-col), then drop quality/media-type, then fall back to 3 mm margins (keeps paper size when a printer
@@ -3260,12 +3261,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             baseStd.add(IppAttempt(true, false, "", "fill", 0.0, 0.0, 300))
             baseStd.add(IppAttempt(false, false, "", ""))
         }
-        val ns = if (named != null) mediaSizeMm(named) else null
-        val zeroMargin = if (selphy && opts.borderless && ns != null) listOf(
-            IppAttempt(true, true, "", "fill", ns.first, ns.second), IppAttempt(true, false, "", "fill", ns.first, ns.second)) else emptyList()
-        val stdAttempts = zeroMargin + (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
-            IppAttempt(true, false, named, "fill"), IppAttempt(true, false, named, ownScaling)) else emptyList()) +
-            (if (selphy) listOf(IppAttempt(true, true, "", "fill"), IppAttempt(true, false, "", "fill")) else emptyList()) +
+        val ns = if (named != null) mediaSizeMm(named) else if (selphy && wMm > 0 && hMm > 0) {
+            val a = minOf(wMm, hMm); val b = maxOf(wMm, hMm)
+            if (a in 95.0..106.0 && b in 142.0..158.0) Pair(100.0, 148.0) else Pair(a, b)
+        } else null
+        val zeroMargin = if (selphy && ns != null) listOf(
+            IppAttempt(true, false, "", "fill", ns.first, ns.second, 0),
+            IppAttempt(true, false, "", "none", ns.first, ns.second, 0),
+            IppAttempt(true, false, "", "", ns.first, ns.second, 0)
+        ) else emptyList()
+        val stdAttempts = zeroMargin + (if (named != null) listOf(
+            IppAttempt(true, false, named, "fill"),
+            IppAttempt(true, false, named, "none"),
+            IppAttempt(true, false, named, "")
+        ) else emptyList()) +
+            (if (selphy) listOf(IppAttempt(true, false, "", "fill"), IppAttempt(true, false, "", "none")) else emptyList()) +
             baseStd
         val rasterAttempts = if (rasterOnly) {
             val wantZero = opts.borderless && !effMt.equals("stationery", ignoreCase = true)

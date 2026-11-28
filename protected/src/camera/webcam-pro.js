@@ -90,7 +90,7 @@
         const sctx = slot.ctx;
         if (!sctx) return;
         if (typeof sctx.setTransform === 'function') sctx.setTransform(1, 0, 0, 1, 0, 0);
-        if (typeof mirrorPreview === 'function' && mirrorPreview()) {
+        if (typeof mirrorOutput === 'function' ? mirrorOutput() : (typeof mirrorPreview === 'function' && mirrorPreview())) {
           sctx.translate(w, 0);
           sctx.scale(-1, 1);
         }

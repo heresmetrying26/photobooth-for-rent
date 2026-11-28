@@ -378,6 +378,7 @@ export function pickMediaType(caps, wanted) {
   return '';
 }
 
+const SELPHY_NAME = /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bcp\s?\d{3,4}\b/i;
 const L8050_NAME = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
 
 /**
@@ -391,7 +392,7 @@ const L8050_NAME = /(?<![a-z0-9-])l[\s_-]?8050(?![0-9])/i;
  */
 export function directPhotoOpts(caps, { quality = '', mediaType = '', borderless = true, wMm = 0, hMm = 0 } = {}) {
   const none = { quality: 0, mediaType: '' };
-  if (!caps || /selphy/i.test(caps.model || '')) return none;
+  if (!caps || SELPHY_NAME.test(caps.model || '')) return none;
   const hardL = L8050_NAME.test(caps.model || '');
   const want = ({ draft: 3, normal: 4, best: 5 })[quality] || 0;
   const qv = want && ((caps.qualities || []).includes(want) || hardL) ? want : 0;
@@ -445,18 +446,28 @@ export async function ippPrintDirect({ ip, port = 631, path = '', jpeg = null, i
   if (!accepted) throw new Error((caps.model || 'This printer') + ' can’t take photos straight from the app (it accepts: ' + caps.formats.filter((f) => /^(image|application)\//.test(f)).slice(0, 5).join(', ') + ').');
   if ((!jpeg || !jpeg.length) && image && typeof toJpeg === 'function') jpeg = toJpeg(image);
   if (!jpeg || !jpeg.length) throw new Error('Could not prepare the photo for the printer.');
-  const named = (paperName && (caps.mediaSupported || []).includes(paperName) ? paperName : '') || pickMediaName(caps, widthMm, heightMm, true);
-  const dims = named ? mediaSizeMm(named) : null;
+  const isSelphy = SELPHY_NAME.test(caps.model || '');
+  const wantBorderless = borderless !== false;
+  const named = (paperName && (caps.mediaSupported || []).includes(paperName) ? paperName : '') || pickMediaName(caps, widthMm, heightMm, wantBorderless);
+  let dims = named ? mediaSizeMm(named) : null;
+  if (!dims && isSelphy && widthMm > 0 && heightMm > 0) {
+    const a = Math.min(widthMm, heightMm), b = Math.max(widthMm, heightMm);
+    dims = (a >= 95 && a <= 106 && b >= 142 && b <= 158) ? [100, 148] : [a, b];
+  }
   jpeg = jpegAt300Dpi(jpeg);
   const baseUri = transport ? transport.baseUri : `ipp://${ip}:${port}`;
   const send = transport ? transport.post : (p, body, ms) => ippPost(ip, port, p, body, ms);
   // A Canon SELPHY lists every paper twice: with its normal margins (a few mm of border) and as a "fullbleed" paper with zero margins.
   // Over IPP the fullbleed one is not a different name: it is the same paper asked for as a page size with all four margins 0. Asking by
-  // name alone gets the bordered one, so the zero-margin page (sized as the printer's own paper) goes first and the name after it.
+  // name alone gets the bordered one, so the zero-margin page (trying fill, none, and printer-default scaling) goes first before named media.
+  const zeroMarginAttempts = dims
+    ? [{ wMm: dims[0], hMm: dims[1], scaling: 'fill' }, { wMm: dims[0], hMm: dims[1], scaling: 'none' }, { wMm: dims[0], hMm: dims[1], scaling: '' }]
+    : [];
+  const namedAttempts = named ? [{ mediaName: named, scaling: 'fill' }, { mediaName: named, scaling: '' }] : [];
   const base = [
-    ...(dims ? [{ wMm: dims[0], hMm: dims[1], scaling: 'fill' }, { wMm: dims[0], hMm: dims[1], scaling: '' }] : []),
-    ...(named ? [{ mediaName: named, scaling: 'fill' }, { mediaName: named, scaling: '' }] : []),
-    ...(widthMm > 0 && heightMm > 0 ? [{ wMm: widthMm, hMm: heightMm, scaling: 'fill' }] : []),
+    ...(wantBorderless ? zeroMarginAttempts : namedAttempts),
+    ...(wantBorderless ? namedAttempts : zeroMarginAttempts),
+    ...(widthMm > 0 && heightMm > 0 ? [{ wMm: widthMm, hMm: heightMm, scaling: 'fill' }, { wMm: widthMm, hMm: heightMm, scaling: 'none' }] : []),
     { scaling: '' }
   ];
   // Each way of asking goes first with the quality / paper type (see directPhotoOpts), then again without them if the printer refuses.

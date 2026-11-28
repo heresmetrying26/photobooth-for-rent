@@ -50,11 +50,11 @@ export function machineId() {
   const os = platform();
   try {
     if (os === 'win32') {
-      const out = execFileSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], { encoding: 'utf8', windowsHide: true });
+      const out = execFileSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], { encoding: 'utf8', windowsHide: true, timeout: 3000 });
       raw = (/MachineGuid\s+REG_\w+\s+([^\s]+)/.exec(out) || [])[1] || '';
     } else if (os === 'darwin') {
       pre = 'MAC';
-      const out = execFileSync('ioreg', ['-rd1', '-c', 'IOPlatformExpertDevice'], { encoding: 'utf8' });
+      const out = execFileSync('ioreg', ['-rd1', '-c', 'IOPlatformExpertDevice'], { encoding: 'utf8', timeout: 3000 });
       raw = (/"IOPlatformUUID"\s*=\s*"([^"]+)"/.exec(out) || [])[1] || '';
     } else {
       // Linux is only used for testing; it acts like a Windows laptop.

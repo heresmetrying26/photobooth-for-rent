@@ -292,6 +292,37 @@ export function isLocalReq(req) {
   return false;
 }
 
+function writeFileAtomic(target, data) {
+  const tmp = target + '.tmp.' + process.pid + '.' + randomBytes(4).toString('hex');
+  try {
+    writeFileSync(tmp, data);
+    renameSync(tmp, target);
+  } catch (e) {
+    try { unlinkSync(tmp); } catch { /* ignore */ }
+    throw e;
+  }
+}
+
+const thumbInFlight = new Map();
+async function ensureThumb(dir, file, full) {
+  const tdir = join(dir, '.thumbs');
+  const tf = join(tdir, file.replace(/\.[a-z0-9]+$/i, '') + '.jpg');
+  if (existsSync(tf)) {
+    try { if (statSync(tf).mtimeMs >= statSync(full).mtimeMs) return tf; } catch { /* regenerate */ }
+  }
+  if (thumbInFlight.has(tf)) return thumbInFlight.get(tf);
+  const p = (async () => {
+    try {
+      const buf = await thumbFn(full);
+      if (buf && buf.length) { mkdirSync(tdir, { recursive: true }); writeFileAtomic(tf, buf); return tf; }
+    } catch { /* fallback to full */ }
+    finally { thumbInFlight.delete(tf); }
+    return null;
+  })();
+  thumbInFlight.set(tf, p);
+  return p;
+}
+
 export async function driveRequest(body) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Bad request' };
   const f = folderFor(body.folderKey, body.subfolder);
@@ -311,7 +342,7 @@ export async function driveRequest(body) {
   mkdirSync(targetDir, { recursive: true });
   let out = name, i = 2;
   while (existsSync(join(targetDir, out)) || existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
-  writeFileSync(join(targetDir, out), buf);
+  writeFileAtomic(join(targetDir, out), buf);
   if (cat !== 'Masters') noteGuestFile(body.guestCode, f.slug, out);   // a master belongs to no guest's page
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl, folderName: f.name, folderPath: f.dir };
 }
@@ -321,7 +352,11 @@ export function folderPathOf(folderUrl) {
 }
 
 const VIRTUAL = /(vEthernet|VirtualBox|VMware|Hyper-V|docker|br-|veth|utun|awdl|llw|bridge|ZeroTier|Tailscale|Loopback|vboxnet|WSL|WireGuard|NordLynx|OpenVPN|TAP-Windows|CloudflareWARP|ProtonVPN|\bwg\d+\b|\btun\d+\b)/i;
-export function lanAddress(nets = networkInterfaces()) {
+let lastHotspotIp = '';
+let lastHotspotAt = 0;
+export function lanAddress(nets = networkInterfaces(), hs = undefined) {
+  const hsInfo = hs !== undefined ? hs : (() => { try { return hotspotInfo(); } catch { return null; } })();
+  const wantHotspot = !!(hsInfo && hsInfo.wanted && hsInfo.on);
   const cands = [];
   for (const [name, list] of Object.entries(nets || {})) {
     for (const a of list || []) {
@@ -331,19 +366,29 @@ export function lanAddress(nets = networkInterfaces()) {
       // Exclude by IP too in case Rename-NetAdapter failed and Windows left it as "Ethernet 2".
       if (/^10\.254\.254\./.test(a.address)) continue;
       let score = 0;
+      const isWinHs = /^192\.168\.137\./.test(a.address);
+      const isMacHs = /^bridge100$/i.test(name) || (/^192\.168\.[23]\./.test(a.address) && /^bridge/i.test(name));
       if (/^192\.168\./.test(a.address)) score += 3;
       else if (/^10\./.test(a.address)) score += 2;
       else if (/^172\.(1[6-9]|2\d|3[01])\./.test(a.address)) score += 1;
       if (/^(wi-?fi|wlan|en0|en1|wireless|local area connection\*)/i.test(name)) score += 2;
-      if (/^192\.168\.137\./.test(a.address)) score += 3;
+      if (isWinHs) score += wantHotspot ? 20 : 3;
       if (VIRTUAL.test(name)) {
-        if (/^bridge100$/i.test(name) || (/^192\.168\.[23]\./.test(a.address) && /^bridge/i.test(name))) score += 5;
+        if (isMacHs) score += wantHotspot ? 20 : 5;
         else score -= 10;
       }
-      cands.push({ ip: a.address, name, score });
+      cands.push({ ip: a.address, name, score, isHs: isWinHs || isMacHs });
     }
   }
   cands.sort((a, b) => b.score - a.score);
+  if (cands.length && cands[0].isHs) {
+    lastHotspotIp = cands[0].ip;
+    lastHotspotAt = Date.now();
+  }
+  // If Booth Wi-Fi is active and momentarily glitches for <15 s, keep emitting the hotspot IP instead of silently switching QRs to an unreachable venue Wi-Fi IP.
+  if (wantHotspot && (!cands.length || !cands[0].isHs) && lastHotspotIp && (Date.now() - lastHotspotAt < 15_000)) {
+    return lastHotspotIp;
+  }
   return cands.length && cands[0].score > -5 ? cands[0].ip : null;
 }
 export function shareBase() {
@@ -407,6 +452,12 @@ window.addEventListener('deviceorientation',function(e){if(e.gamma==null)return;
 })();</script>`;
 const holoFor = (names) => (names || []).some((n) => /_card(_|\.)/i.test(n)) ? HOLO : '';
 
+function pipeStreamSafe(rs, res) {
+  rs.on('error', () => { try { if (!res.headersSent) res.writeHead(500); res.destroy(); } catch { /* ignore */ } });
+  res.on('close', () => { try { rs.destroy(); } catch { /* ignore */ } });
+  rs.pipe(res);
+}
+
 function serveFile(req, res, full, type, extra) {
   let size;
   try { size = statSync(full).size; } catch { return send(res, 404, 'text/plain', 'Not found'); }
@@ -419,11 +470,11 @@ function serveFile(req, res, full, type, extra) {
     if (!(a >= 0 && a <= b && a < size)) { res.writeHead(416, { 'content-range': 'bytes */' + size }); return res.end(); }
     res.writeHead(206, { ...h, 'content-range': 'bytes ' + a + '-' + b + '/' + size, 'content-length': b - a + 1 });
     if (req.method === 'HEAD') return res.end();
-    return createReadStream(full, { start: a, end: b }).pipe(res);
+    return pipeStreamSafe(createReadStream(full, { start: a, end: b }), res);
   }
   res.writeHead(200, { ...h, 'content-length': size });
   if (req.method === 'HEAD') return res.end();
-  createReadStream(full).pipe(res);
+  pipeStreamSafe(createReadStream(full), res);
 }
 
 let spinDir = null;
@@ -1808,15 +1859,19 @@ function handleOwn(req, res, url, om) {
 
 // ---------- dual online / offline saving tips & share script ----------
 function savingTipHtml(slug, file, evName) {
-  return '<div class="tip" id="iosTip" style="display:none"><b>How to save on iPhone / iPad:</b><br>1. Tap <b>Save video</b> (or <b>Save photo</b>).<br>2. Tap the blue download arrow ⬇️ in Safari’s address bar, then tap the clip.<br>3. Tap the Share icon (square with arrow) &gt; <b>Save Video</b> to keep it in your Photos app.</div>' +
-    '<div class="tip" id="androidTip" style="display:none"><b>How to save on Android:</b><br>Tap <b>Save video</b> (or <b>Save photo</b>). It saves directly to your Downloads and shows in Google Photos or Gallery.</div>' +
-    '<div class="tip" id="genTip">Tap <b>Save video</b> (or <b>Save photo</b>) to download directly to your device.</div>' +
+  return '<div id="pbSavedNote" class="tip" style="display:none;background:#e8f6ee;border:1px solid #b7e2c8;color:#1b5e36;border-radius:10px;padding:10px 12px;font-weight:600">Saved! You can now switch back to your regular Wi-Fi or Mobile Data so the next guest can connect fast.</div>' +
+    '<div class="tip" id="iosTip" style="display:none"><b>How to save on iPhone / iPad:</b><br>1. Tap <b>Save photo</b> (or <b>Save video</b>).<br>2. Tap the blue download arrow ⬇️ in Safari’s address bar, then tap the file.<br>3. Tap the Share icon (square with arrow) &gt; <b>Save Image / Save Video</b>.<br><span style="display:block;margin-top:6px;opacity:.88"><b>iPhone stuck loading?</b> Turn <b>Mobile Data (4G/5G) OFF</b> for 5 seconds, check you’re on the Booth Wi-Fi, then tap Reload.</span></div>' +
+    '<div class="tip" id="androidTip" style="display:none"><b>How to save on Android:</b><br>Tap <b>Save photo</b> (or <b>Save video</b>). It saves directly to your Downloads and shows in Google Photos or Gallery.</div>' +
+    '<div class="tip" id="genTip">Tap <b>Save photo</b> (or <b>Save video</b>) to download directly to your device.</div>' +
     '<script>(function(){' +
     'var isIos=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;' +
     'var isAndroid=/Android/.test(navigator.userAgent);' +
     'var it=document.getElementById("iosTip"),at=document.getElementById("androidTip"),gt=document.getElementById("genTip");' +
     'if(isIos&&it){it.style.display="block";if(gt)gt.style.display="none"}' +
     'else if(isAndroid&&at){at.style.display="block";if(gt)gt.style.display="none"}' +
+    'var sn=document.getElementById("pbSavedNote");' +
+    '[].forEach.call(document.querySelectorAll("a[download],#btnDl"),function(a){a.addEventListener("click",function(){if(sn)setTimeout(function(){sn.style.display="block"},900)})});' +
+    '[].forEach.call(document.querySelectorAll(".one img"),function(im){var base=im.getAttribute("src")||"",tries=0;im.addEventListener("error",function(){if(tries<4){tries++;setTimeout(function(){im.src=base+(base.indexOf("?")<0?"?":"&")+"_r="+tries+"_"+Date.now()},900*tries);return}if(im.dataset.errShown)return;im.dataset.errShown="1";var b=document.createElement("div");b.className="tip";b.style.cssText="background:#fff4e6;border:1px solid #f0cfa0;border-radius:10px;padding:10px 12px;text-align:center";b.innerHTML="<b>Photo couldn’t load over Wi-Fi.</b><br>iPhone user? Turn <b>Mobile Data OFF</b> briefly, check you’re still on Booth Wi-Fi, then tap below.<br><button type=\\"button\\" class=\\"btn\\" style=\\"margin-top:10px\\" onclick=\\"location.reload()\\">Reload photo</button>";im.parentNode.insertBefore(b,im.nextSibling)})});' +
     '})()</script>';
 }
 
@@ -3157,15 +3212,8 @@ async function handleShare(req, res) {
     return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body + holoFor([file])));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {
-    try {
-      const tdir = join(dir, '.thumbs');
-      const tf = join(tdir, file.replace(/\.[a-z0-9]+$/i, '') + '.jpg');
-      if (!existsSync(tf) || statSync(tf).mtimeMs < statSync(full).mtimeMs) {
-        const buf = await thumbFn(full);
-        if (buf) { mkdirSync(tdir, { recursive: true }); writeFileSync(tf, buf); }
-      }
-      if (existsSync(tf)) { res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=600' }); return createReadStream(tf).pipe(res); }
-    } catch { /* fall back to the full photo */ }
+    const tf = await ensureThumb(dir, file, full);
+    if (tf && existsSync(tf)) return serveFile(req, res, tf, 'image/jpeg');
   }
   const extra = {};
   if (url.searchParams.get('dl')) {
@@ -3184,7 +3232,9 @@ export function startShareServer() {
       const port = SHARE_PORTS[i++];
       const s = http.createServer((req, res) => { handleShare(req, res).catch(() => { try { send(res, 500, 'text/plain', 'Error'); } catch { /* closed */ } }); });
       s.requestTimeout = 120_000;
-      s.headersTimeout = 30_000;
+      s.keepAliveTimeout = 65_000;
+      s.headersTimeout = 70_000;
+      s.on('connection', (sock) => { try { sock.setNoDelay(true); sock.setKeepAlive(true, 15_000); } catch { /* ignore */ } });
       s.once('error', () => { try { s.close(); } catch { /* ignore */ } tryNext(); });
       s.listen(port, '0.0.0.0', () => { server = s; sharePort = port; attachBridgeUpgrade(s); resolve(port); });
     };

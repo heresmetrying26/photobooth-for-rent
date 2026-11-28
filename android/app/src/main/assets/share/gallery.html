@@ -229,10 +229,17 @@ async function gbDownloadAll(items, btn, base) {
     var all = el('a', 'btn alt', 'All photos');
     all.href = '/e/' + slug + '/';
     if(!found){
-      document.title = 'Not ready';
-      wrap.appendChild(el('p', 'empty', 'This photo isn’t here yet. Wait a moment and refresh.'));
+      document.title = 'On its way…';
+      wrap.appendChild(el('h1', null, 'Your photo is on its way'));
+      wrap.appendChild(el('p', 'empty', 'Wait a moment — this page checks again automatically.'));
+      var tipW = el('p', 'tip');
+      tipW.innerHTML = '<b>iPhone user?</b> If this stays stuck, turn <b>Mobile Data (4G/5G) OFF</b> for 5 seconds, check you’re on the Booth Wi-Fi, then tap Reload.';
+      wrap.appendChild(tipW);
+      var relBtn = el('button', 'btn', 'Reload now'); relBtn.type = 'button'; relBtn.onclick = function(){ location.reload(); };
+      wrap.appendChild(relBtn);
       wrap.appendChild(all);
       app.appendChild(wrap);
+      if (waitTries < 15) { waitTries++; setTimeout(loadGallery, 3000); }
       return;
     }
     var gif = isGif(name), vid = isVideo(name), solo = isSolo(name);
@@ -260,6 +267,16 @@ async function gbDownloadAll(items, btn, base) {
     } else {
       media = el('img');
       media.alt = title; media.src = src;
+      var imgTries = 0;
+      media.onerror = function(){
+        if(imgTries < 4){ imgTries++; setTimeout(function(){ media.src = src + (src.indexOf('?') < 0 ? '?' : '&') + '_r=' + imgTries + '_' + Date.now(); }, 900 * imgTries); return; }
+        if(media.dataset.errShown) return;
+        media.dataset.errShown = '1';
+        var box = el('div', 'tip');
+        box.style.cssText = 'background:#fff4e6;border:1px solid #f0cfa0;border-radius:10px;padding:10px 12px;text-align:center';
+        box.innerHTML = '<b>Photo couldn’t load over Wi-Fi.</b><br>iPhone user? Turn <b>Mobile Data OFF</b> briefly, stay on Booth Wi-Fi, then tap below.<br><button type="button" class="btn" style="margin-top:10px" onclick="location.reload()">Reload photo</button>';
+        wrap.insertBefore(box, media.nextSibling);
+      };
     }
     wrap.appendChild(media);
     var row = el('div');
@@ -273,9 +290,13 @@ async function gbDownloadAll(items, btn, base) {
       row.appendChild(sh);
     }
 
-    var dl = el('a', 'btn' + (navigator.share && window.isSecureContext ? ' alt' : ''), vid ? 'Save video' : gif ? 'Save GIF' : solo ? 'Save solo photo' : 'Save photo');
+    var dlLabel = vid ? 'Save video' : gif ? 'Save GIF' : solo ? 'Save solo photo' : 'Save photo';
+    var savedNote = el('div', 'tip');
+    savedNote.style.cssText = 'display:none;background:#e8f6ee;border:1px solid #b7e2c8;color:#1b5e36;border-radius:10px;padding:10px 12px;font-weight:600';
+    savedNote.textContent = 'Saved! You can now switch back to your regular Wi-Fi or Mobile Data so the next guest can connect fast.';
+    var dl = el('a', 'btn' + (navigator.share && window.isSecureContext ? ' alt' : ''), dlLabel);
     dl.href = src + '?dl=1'; dl.setAttribute('download', name);
-    dl.onclick = function(){ track('downloads'); };
+    dl.onclick = function(){ track('downloads'); setTimeout(function(){ savedNote.style.display = 'block'; }, 900); };
     row.appendChild(dl);
 
     var cp = el('button', 'btn alt', 'Copy link 📋');
@@ -334,31 +355,36 @@ async function gbDownloadAll(items, btn, base) {
     }
     row.appendChild(all);
     wrap.appendChild(row);
+    wrap.appendChild(savedNote);
     var tip = el('p', 'tip');
     var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     var isAndroid = /Android/.test(navigator.userAgent);
-    if(isIos) tip.innerHTML = '<b>How to save on iPhone:</b><br>1. Tap <b>Save video</b>.<br>2. Tap the blue download arrow ⬇️ in Safari’s address bar, then tap the clip.<br>3. Tap Share &gt; <b>Save Video</b> to keep it in Photos.';
-    else if(isAndroid) tip.innerHTML = '<b>How to save on Android:</b><br>Tap <b>Save video</b>. It downloads directly to your device and appears in Google Photos / Gallery.';
-    else tip.innerHTML = 'Tap <b>Save video</b> to download directly to your device.';
+    if(isIos) tip.innerHTML = '<b>How to save on iPhone:</b><br>1. Tap <b>' + dlLabel + '</b>.<br>2. Tap the blue download arrow ⬇️ in Safari’s address bar, then tap the file.<br>3. Tap Share &gt; <b>' + (vid ? 'Save Video' : 'Save Image') + '</b> to keep it in Photos.<br><span style="display:block;margin-top:6px;opacity:.88"><b>iPhone stuck loading?</b> Turn <b>Mobile Data (4G/5G) OFF</b> for 5 seconds, stay on Booth Wi-Fi, then reload.</span>';
+    else if(isAndroid) tip.innerHTML = '<b>How to save on Android:</b><br>Tap <b>' + dlLabel + '</b>. It downloads directly to your device and appears in Google Photos / Gallery.';
+    else tip.innerHTML = 'Tap <b>' + dlLabel + '</b> to download directly to your device.';
     wrap.appendChild(tip);
     app.appendChild(wrap);
   }
 
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/e/' + slug + '/list.json?t=' + Date.now());
-  xhr.timeout = 10000;
-  xhr.ontimeout = function(){
-    showMessage('Connection timed out. Pull down to refresh or check connection to the booth.', 'Photos');
-  };
-  xhr.onload = function(){
-    if(xhr.status === 404){ showMessage('This event isn’t on this booth anymore.'); return; }
-    var data = null;
-    try{ data = JSON.parse(xhr.responseText); }catch(e){}
-    if(xhr.status !== 200 || !data){ showMessage('Couldn’t load the photos. Pull down to refresh.', 'Photos'); return; }
-    if(file === null) renderList(data); else renderOne(data, file);
-  };
-  xhr.onerror = function(){ showMessage('Couldn’t reach the booth. Check your connection to the booth Wi-Fi.', 'Photos'); };
-  xhr.send();
+  var waitTries = 0;
+  function loadGallery(){
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/e/' + slug + '/list.json?t=' + Date.now());
+    xhr.timeout = 10000;
+    xhr.ontimeout = function(){
+      showMessage('Connection timed out. iPhone user? Turn Mobile Data OFF briefly, stay on Booth Wi-Fi, then refresh.', 'Photos');
+    };
+    xhr.onload = function(){
+      if(xhr.status === 404){ showMessage('This event isn’t on this booth anymore.'); return; }
+      var data = null;
+      try{ data = JSON.parse(xhr.responseText); }catch(e){}
+      if(xhr.status !== 200 || !data){ showMessage('Couldn’t load the photos. Pull down to refresh.', 'Photos'); return; }
+      if(file === null) renderList(data); else renderOne(data, file);
+    };
+    xhr.onerror = function(){ showMessage('Couldn’t reach the booth. Check your connection to the booth Wi-Fi (iPhone: briefly turn Mobile Data OFF).', 'Photos'); };
+    xhr.send();
+  }
+  loadGallery();
 })();
 </script>
 </body>

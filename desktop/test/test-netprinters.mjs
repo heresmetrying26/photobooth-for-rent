@@ -138,7 +138,7 @@ console.log('✓ Passed: a printer is found open, named over IPP, and a closed p
   let r2 = await ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 });
   assert.equal(r2.media, 'jpn_hagaki_100x148mm');
   assert.equal(r2.scaling, 'fill');
-  assert.equal(seen.length, 3);                                         // zero margin + fill, zero margin, then the name + fill
+  assert.equal(seen.length, 4);                                         // zero margin + fill, zero margin + none, zero margin, then the name + fill
   console.log('✓ Passed: a photo asks for the zero-margin page first, then the paper name when the printer refuses it');
   sp.close();
   await assert.rejects(() => ippPrintDirect({ ip: '127.0.0.1', port: pp, jpeg, widthMm: 100, heightMm: 148 }), /did not answer/);

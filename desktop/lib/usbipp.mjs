@@ -6,6 +6,7 @@
 import { createRequire } from 'node:module';
 import { isSelphyUsb, selphyModelName, selphyErrorDescription } from './selphyusb.mjs';
 import { isDnpUsb, dnpModelName, dnpUnsupportedReason, dnpCmd, dnpIsError, dnpStatusText, parseDnpIntReply, parseDnpMediaRemaining } from './dnpusb.mjs';
+import { canScanUsbOffProcess, scanUsbOffProcess } from './usb-enum.mjs';
 
 const BROTHER_VID = 0x04f9;
 const HP_VID = 0x03f0;
@@ -190,11 +191,89 @@ function modelFromDeviceId(id) {
   return maker && !model.toLowerCase().includes(maker.toLowerCase()) ? `${maker} ${model}` : model;
 }
 
+function buildPrinterProbeEntry({ vid, pid, bus, address, interfaces, product, manufacturer, deviceId, platform }) {
+  const ippIface = pickUsbIppInterface(vid, interfaces);
+  const rawIface = pickUsbRawInterface(interfaces);
+  const idPair = `${hex4(vid)}:${hex4(pid)}`;
+  const vendorName = VENDORS.get(vid) || manufacturer || '';
+  const known = KNOWN_MODELS.get(idPair) || selphyModelName(vid, pid) || '';
+  const from1284 = modelFromDeviceId(deviceId);
+  let name = known || from1284 || '';
+  if (!name && product) name = vendorName && !product.toLowerCase().includes(vendorName.toLowerCase()) ? `${vendorName} ${product}` : product;
+  if (!name) name = (vendorName ? vendorName + ' ' : '') + `USB printer (${idPair})`;
+
+  const selphy = isSelphyUsb(vid, pid, `${name} ${product} ${deviceId}`);
+  const selphyIface = selphy ? pickUsbSelphyInterface(interfaces) : null;
+
+  const dnpModel = dnpModelName(vid, pid, `${name} ${product} ${deviceId}`);
+  const dnp = !!dnpModel;
+  const dnpUnsupported = dnp ? dnpUnsupportedReason(dnpModel) : '';
+  const dnpIface = (dnp && !dnpUnsupported) ? pickUsbSelphyInterface(interfaces) : null;
+
+  const key = `usb:${bus || 0}:${address || 0}:${idPair}`;
+  let note = '';
+  if (selphy && selphyIface) {
+    note = 'Canon SELPHY detected on USB: the app can print straight to it over USB with no driver.';
+  } else if (dnp && dnpIface) {
+    note = `DNP ${dnpModel} detected on USB: the app can print straight to it over USB (driverless, auto 2×6 cut, glossy/matte & live remaining media counter) or through its official DNP driver.`;
+  } else if (dnp && dnpUnsupported) {
+    note = dnpUnsupported;
+  } else if (ippIface) {
+    note = 'Supports driverless IPP-over-USB (7/1/4): the app can print straight to it over USB.';
+  } else if (vid === BROTHER_VID) {
+    note = platform === 'win32'
+      ? `${name} is connected on USB without an IPP-over-USB (7/1/4) interface. Install Brother’s Windows USB driver so it appears in your printer list, or connect it to Wi-Fi and use Find Wi-Fi / network printers for driverless printing.`
+      : `${name} is connected on USB, but exposes only Brother’s proprietary USB interface (no IPP-over-USB 7/1/4) and macOS has no driver for it. Connect it to Wi-Fi and use Find Wi-Fi / network printers to print straight from this Mac with no driver.`;
+  } else {
+    note = platform === 'win32'
+      ? `${name} is connected on USB without IPP-over-USB (7/1/4). Install its Windows driver so it appears in your printer list.`
+      : `${name} is connected on USB without IPP-over-USB (7/1/4). Add it in System Settings → Printers & Scanners or connect over Wi-Fi.`;
+  }
+
+  return {
+    key, vid, pid, vidHex: hex4(vid), pidHex: hex4(pid),
+    bus: bus || 0, address: address || 0,
+    name, product, manufacturer, deviceId,
+    isSelphy: selphy,
+    hasSelphyUsb: !!selphyIface,
+    selphyIface,
+    isDnp: dnp,
+    dnpModel,
+    dnpUnsupportedReason: dnpUnsupported,
+    hasDnpUsb: !!dnpIface,
+    dnpIface,
+    hasIppUsb: !!ippIface,
+    hasRawPrinter: !!rawIface,
+    ippIface,
+    interfaces,
+    note
+  };
+}
+
 /**
  * Probes every connected USB printer visible to libusb.
+ * Inside Electron (when no test mock is active), runs libusb inside an isolated utilityProcess
+ * so slow/suspended Windows USB hubs can never block the main UI thread.
  * Never throws: returns [] if libusb is unavailable or no USB printers are attached.
  */
-export async function probeUsbPrinters({ platform = process.platform, readDescriptors = true } = {}) {
+export async function probeUsbPrinters({ platform = process.platform, readDescriptors = true, force = false, logger = null } = {}) {
+  if (!usbOverride && canScanUsbOffProcess()) {
+    const scan = await scanUsbOffProcess({ platform, readDescriptors, force, logger });
+    if (!scan.unavailable) {
+      if (!scan.ok || !Array.isArray(scan.printers)) return [];
+      return scan.printers.map((raw) => buildPrinterProbeEntry({
+        vid: raw.vid,
+        pid: raw.pid,
+        bus: raw.bus || 0,
+        address: raw.address || 0,
+        interfaces: Array.isArray(raw.interfaces) ? raw.interfaces : [],
+        product: raw.product || '',
+        manufacturer: raw.manufacturer || '',
+        deviceId: raw.deviceId || '',
+        platform
+      }));
+    }
+  }
   const u = getUsb();
   if (!u || typeof u.getDeviceList !== 'function') return [];
   let devs = [];
@@ -207,9 +286,7 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
     const ifaces = inspectDeviceInterfaces(dev);
     const isPrinter = ifaces.some((i) => i.cls === 7) || vid === BROTHER_VID || isSelphyUsb(vid, pid, '') || isDnpUsb(vid, pid, '');
     if (!isPrinter) continue;
-    const ippIface = pickUsbIppInterface(vid, ifaces);
     const rawIface = pickUsbRawInterface(ifaces);
-    const idPair = `${hex4(vid)}:${hex4(pid)}`;
     let product = '', manufacturer = '', deviceId = '';
     if (readDescriptors) {
       let opened = false;
@@ -222,59 +299,10 @@ export async function probeUsbPrinters({ platform = process.platform, readDescri
       } catch { /* On Windows, usbprint.sys often blocks dev.open() — fall back to VID:PID */ }
       finally { if (opened) { try { dev.close(); } catch { /* ignore */ } } }
     }
-    const vendorName = VENDORS.get(vid) || manufacturer || '';
-    const known = KNOWN_MODELS.get(idPair) || selphyModelName(vid, pid) || '';
-    const from1284 = modelFromDeviceId(deviceId);
-    let name = known || from1284 || '';
-    if (!name && product) name = vendorName && !product.toLowerCase().includes(vendorName.toLowerCase()) ? `${vendorName} ${product}` : product;
-    if (!name) name = (vendorName ? vendorName + ' ' : '') + `USB printer (${idPair})`;
-
-    const selphy = isSelphyUsb(vid, pid, `${name} ${product} ${deviceId}`);
-    const selphyIface = selphy ? pickUsbSelphyInterface(ifaces) : null;
-
-    const dnpModel = dnpModelName(vid, pid, `${name} ${product} ${deviceId}`);
-    const dnp = !!dnpModel;
-    const dnpUnsupported = dnp ? dnpUnsupportedReason(dnpModel) : '';
-    const dnpIface = (dnp && !dnpUnsupported) ? pickUsbSelphyInterface(ifaces) : null;
-
-    const key = `usb:${dev.busNumber || 0}:${dev.deviceAddress || 0}:${idPair}`;
-    let note = '';
-    if (selphy && selphyIface) {
-      note = 'Canon SELPHY detected on USB: the app can print straight to it over USB with no driver.';
-    } else if (dnp && dnpIface) {
-      note = `DNP ${dnpModel} detected on USB: the app can print straight to it over USB (driverless, auto 2×6 cut, glossy/matte & live remaining media counter) or through its official DNP driver.`;
-    } else if (dnp && dnpUnsupported) {
-      note = dnpUnsupported;
-    } else if (ippIface) {
-      note = 'Supports driverless IPP-over-USB (7/1/4): the app can print straight to it over USB.';
-    } else if (vid === BROTHER_VID) {
-      note = platform === 'win32'
-        ? `${name} is connected on USB without an IPP-over-USB (7/1/4) interface. Install Brother’s Windows USB driver so it appears in your printer list, or connect it to Wi-Fi and use Find Wi-Fi / network printers for driverless printing.`
-        : `${name} is connected on USB, but exposes only Brother’s proprietary USB interface (no IPP-over-USB 7/1/4) and macOS has no driver for it. Connect it to Wi-Fi and use Find Wi-Fi / network printers to print straight from this Mac with no driver.`;
-    } else {
-      note = platform === 'win32'
-        ? `${name} is connected on USB without IPP-over-USB (7/1/4). Install its Windows driver so it appears in your printer list.`
-        : `${name} is connected on USB without IPP-over-USB (7/1/4). Add it in System Settings → Printers & Scanners or connect over Wi-Fi.`;
-    }
-
-    results.push({
-      key, vid, pid, vidHex: hex4(vid), pidHex: hex4(pid),
-      bus: dev.busNumber || 0, address: dev.deviceAddress || 0,
-      name, product, manufacturer, deviceId,
-      isSelphy: selphy,
-      hasSelphyUsb: !!selphyIface,
-      selphyIface,
-      isDnp: dnp,
-      dnpModel,
-      dnpUnsupportedReason: dnpUnsupported,
-      hasDnpUsb: !!dnpIface,
-      dnpIface,
-      hasIppUsb: !!ippIface,
-      hasRawPrinter: !!rawIface,
-      ippIface,
-      interfaces: ifaces,
-      note
-    });
+    results.push(buildPrinterProbeEntry({
+      vid, pid, bus: dev.busNumber || 0, address: dev.deviceAddress || 0,
+      interfaces: ifaces, product, manufacturer, deviceId, platform
+    }));
   }
   return results;
 }

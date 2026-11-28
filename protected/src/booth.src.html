@@ -6953,6 +6953,22 @@
     }
     #spinModeToggle[aria-pressed="true"] { background: #1c1a1e; color: #fff; border-color: #1c1a1e; }
 
+    /* Guest Kiosk mode for 360 Desk when launched from Welcome Screen while booth is locked */
+    #spinOverlay.spin-kiosk #spinHeadTabs,
+    #spinOverlay.spin-kiosk .spin-head-right,
+    #spinOverlay.spin-kiosk .spin-howto-nav,
+    #spinOverlay.spin-kiosk #spinEditLockBanner,
+    #spinOverlay.spin-kiosk .spin-adv,
+    #spinOverlay.spin-kiosk .spin-studio-controls > .spin-panel-card:not(#spinSecCapture) {
+      display: none !important;
+    }
+    #spinOverlay.spin-kiosk .spin-studio-body {
+      max-width: 1240px;
+    }
+    #spinOverlay.spin-kiosk #spinSecCapture {
+      display: block !important;
+    }
+
     .spin-step-pill {
       display: inline-flex;
       align-items: center;
@@ -11895,33 +11911,55 @@
     }
 
     body.in-session .app-shell.capturing.film-below .stage-wrap {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     body.in-session .app-shell.capturing.film-below .film-track {
+      position: relative;
+      grid-column: auto;
+      grid-row: auto;
       flex-direction: row;
+      flex-wrap: nowrap;
       justify-content: center;
+      align-items: center;
+      gap: var(--film-gap, 10px);
       margin-top: 10px;
+      padding: var(--film-pady, 8px) var(--film-padx, 10px);
+      border-radius: 16px;
+      background: rgba(0, 0, 0, .42);
+      max-width: calc(100vw - 24px);
+      box-sizing: border-box;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+
+    body.in-session .app-shell.capturing.film-below .film-track.is-scroll {
+      justify-content: flex-start;
     }
 
     body.in-session .app-shell.capturing.film-below .film-track .film-frame {
-      width: auto;
-      height: 70px;
+      width: var(--film-fw, auto);
+      height: var(--film-fh, 92px);
+      flex: 0 0 auto;
     }
 
     @media (max-width:760px) {
       body.in-session .app-shell.capturing .stage-wrap {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
       }
 
       body.in-session .app-shell.capturing .film-track {
         flex-direction: row;
-        margin-top: 12px;
+        margin-top: 10px;
       }
 
       body.in-session .app-shell.capturing .film-track .film-frame {
-        width: auto;
-        height: 70px;
+        width: var(--film-fw, auto);
+        height: var(--film-fh, 86px);
       }
     }
 
@@ -12255,6 +12293,291 @@
     .welcome-cta-btn:active {
       transform: scale(0.96);
       background: #b3331f;
+    }
+
+    /* Circular Icon-First Welcome Shortcuts & Editorial Split Overlay */
+    .welcome-editorial {
+      position: absolute;
+      inset: 0;
+      z-index: 9;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: clamp(22px, 5vw, 56px);
+      padding-right: clamp(128px, 22vw, 220px);
+      background: linear-gradient(90deg, rgba(14, 12, 18, 0.72) 0%, rgba(14, 12, 18, 0.36) 54%, rgba(14, 12, 18, 0.08) 100%);
+      color: #fff;
+      text-align: left;
+      box-sizing: border-box;
+    }
+    .welcome-editorial[hidden] { display: none !important; }
+    .welcome-editorial-kicker {
+      font: 700 clamp(10px, 1.4vw, 13px) 'Manrope', sans-serif;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.78);
+      margin: 0 0 6px;
+    }
+    .welcome-editorial-title {
+      font-family: var(--w-editorial-font, 'Fraunces', 'Cormorant Garamond', Georgia, serif);
+      font-weight: 500;
+      font-size: clamp(26px, 4.8vw, 58px);
+      line-height: 1.06;
+      letter-spacing: -0.015em;
+      margin: 0 0 10px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      max-width: 14ch;
+    }
+    .welcome-editorial-sub {
+      font: 500 clamp(12px, 1.9vw, 20px) 'Manrope', sans-serif;
+      line-height: 1.38;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+      max-width: 30ch;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+    .welcome-editorial.is-preview {
+      padding: 12px 68px 12px 14px;
+    }
+    .welcome-editorial.is-preview .welcome-editorial-kicker { font-size: 7px; margin-bottom: 2px; }
+    .welcome-editorial.is-preview .welcome-editorial-title { font-size: clamp(13px, 2.2vw, 18px); margin-bottom: 4px; }
+    .welcome-editorial.is-preview .welcome-editorial-sub { font-size: clamp(8px, 1.2vw, 10px); }
+
+    .welcome-icon-dock {
+      position: absolute;
+      z-index: 12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(14px, 2.5vw, 28px);
+      pointer-events: none;
+      --wib-size: calc(clamp(68px, 9.6vmin, 104px) * min(max(var(--ui-btn-scale, 1), 0.85), 1.48));
+      --wib-outer-ring: rgba(255, 255, 255, 0.52);
+      --wib-inner-ring: rgba(255, 255, 255, 0.44);
+      --wib-bg: rgba(20, 18, 26, 0.38);
+      --wib-fg: #ffffff;
+      --wib-accent: #C93D27;
+    }
+    .welcome-icon-dock[hidden] { display: none !important; }
+    .welcome-icon-dock[data-pos="bottom"] {
+      left: 50%;
+      bottom: clamp(26px, 5.5%, 64px);
+      transform: translateX(-50%);
+      max-width: calc(100% - 28px);
+      flex-wrap: wrap;
+    }
+    .welcome-icon-dock[data-pos="lower"] {
+      left: 50%;
+      bottom: 20%;
+      transform: translateX(-50%);
+      max-width: calc(100% - 28px);
+      flex-wrap: wrap;
+    }
+    .welcome-icon-dock[data-pos="center"] {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      max-width: calc(100% - 28px);
+      flex-wrap: wrap;
+    }
+    .welcome-icon-dock[data-pos="right"] {
+      right: clamp(18px, 4.2%, 54px);
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: column;
+      gap: clamp(12px, 2vh, 22px);
+    }
+    .welcome-icon-dock[data-pos="card"] {
+      transform: translate(-50%, -50%);
+      flex-wrap: wrap;
+    }
+    .welcome-icon-dock.is-preview {
+      --wib-size: clamp(32px, 6.2vw, 44px);
+      gap: 7px;
+      z-index: 6;
+    }
+    .welcome-icon-dock.is-preview[data-pos="right"] {
+      right: 10px;
+      gap: 6px;
+    }
+    .welcome-icon-dock.is-preview[data-pos="bottom"] {
+      bottom: 10px;
+    }
+    .welcome-icon-dock.wib-surface-light {
+      --wib-outer-ring: rgba(28, 26, 30, 0.26);
+      --wib-inner-ring: rgba(28, 26, 30, 0.16);
+      --wib-bg: rgba(255, 255, 255, 0.86);
+      --wib-fg: #1C1A1E;
+    }
+
+    .wib-btn {
+      pointer-events: auto;
+      background: none;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .wib-ring {
+      position: relative;
+      width: var(--wib-size);
+      height: var(--wib-size);
+      border-radius: 50%;
+      padding: 4px;
+      border: 1.5px solid var(--wib-outer-ring);
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .welcome-icon-dock.is-preview .wib-ring {
+      padding: 2px;
+      border-width: 1px;
+    }
+    .wib-btn.is-primary .wib-ring {
+      border-color: var(--wib-primary-ring, rgba(255, 255, 255, 0.72));
+    }
+    .wib-btn.is-primary .wib-ring::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid var(--wib-primary-ring, rgba(255, 255, 255, 0.5));
+      opacity: 0;
+      animation: wibHalo 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+      pointer-events: none;
+    }
+    @keyframes wibHalo {
+      0% { transform: scale(0.96); opacity: 0.75; }
+      70% { transform: scale(1.16); opacity: 0; }
+      100% { transform: scale(1.16); opacity: 0; }
+    }
+    .wib-core {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: 1.2px solid var(--wib-inner-ring);
+      background: var(--wib-bg);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      color: var(--wib-fg);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      box-sizing: border-box;
+      padding: 6px;
+      transition: transform 0.16s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+    .welcome-icon-dock.is-preview .wib-core {
+      padding: 3px;
+      gap: 1px;
+    }
+    .wib-btn.is-primary.wib-tinted .wib-core {
+      background: var(--wib-accent-bg, rgba(201, 61, 39, 0.92));
+      color: var(--wib-accent-ink, #ffffff);
+      border-color: rgba(255, 255, 255, 0.32);
+    }
+    .wib-btn:hover .wib-ring {
+      transform: translateY(-2px) scale(1.04);
+    }
+    .wib-btn:active .wib-core {
+      transform: scale(0.93);
+    }
+    .wib-btn svg {
+      width: 42%;
+      height: 42%;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: none;
+    }
+    .wib-btn.has-label svg {
+      width: 31%;
+      height: 31%;
+    }
+    .wib-lbl {
+      font: 700 clamp(9.5px, 1.3vmin, 12.5px) 'Manrope', -apple-system, sans-serif;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+      text-align: center;
+      max-width: 90%;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .welcome-icon-dock.is-preview .wib-lbl {
+      font-size: 6.5px;
+      line-height: 1.05;
+    }
+
+    /* Pill style when shortcuts are enabled under Classic pill look */
+    .welcome-pill-btn {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: calc(13px * min(max(var(--ui-btn-scale, 1), 0.85), 1.45)) calc(26px * min(max(var(--ui-btn-scale, 1), 0.85), 1.45));
+      border-radius: 999px;
+      border: 1.5px solid rgba(255, 255, 255, 0.36);
+      background: rgba(20, 18, 24, 0.62);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      color: #ffffff;
+      font: 800 calc(clamp(14px, 2vw, 20px) * min(max(var(--ui-btn-scale, 1), 0.85), 1.4)) 'Manrope', sans-serif;
+      cursor: pointer;
+      touch-action: manipulation;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .welcome-pill-btn.is-primary {
+      background: var(--wib-accent-bg, #C93D27);
+      color: var(--wib-accent-ink, #ffffff);
+      border-color: transparent;
+    }
+    .welcome-icon-dock.wib-surface-light .welcome-pill-btn:not(.is-primary) {
+      background: rgba(28, 26, 30, 0.09);
+      color: #1C1A1E;
+      border-color: rgba(28, 26, 30, 0.16);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+    .welcome-pill-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: none;
+    }
+    .welcome-pill-btn:active { transform: scale(0.95); }
+    .welcome-icon-dock.is-preview .welcome-pill-btn {
+      padding: 5px 10px;
+      font-size: 9px;
+      gap: 4px;
+    }
+    .welcome-icon-dock.is-preview .welcome-pill-btn svg {
+      width: 10px;
+      height: 10px;
     }
 
     .shot-review {
@@ -16215,20 +16538,52 @@
       color: var(--brand-press);
     }
 
-    /* ---- Step 7 · Welcome screen UX revamp ---- */
+    /* ---- Step 7 · Welcome & Result screen UX (sticky interactive preview + split layout) ---- */
     .welcome-pv-card {
       background: var(--panel-2);
       border: 1.5px solid var(--line);
       border-radius: 14px;
       padding: 10px 12px 12px;
       margin: 12px 0;
+      --pv-max-h: 240px;
+    }
+
+    .welcome-pv-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .welcome-pv-head-r {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .welcome-pv-ctl {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 3px 9px;
+      font: 700 11px 'Manrope', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      line-height: 1.3;
+    }
+
+    .welcome-pv-ctl:active {
+      transform: scale(0.97);
     }
 
     .welcome-pv-frame {
       position: relative;
-      width: min(100%, calc(210px * var(--pv-ar, 1.7778)));
+      width: min(100%, calc(var(--pv-max-h, 240px) * var(--pv-ar, 1.7778)));
       aspect-ratio: var(--pv-ar, 1.7778);
-      max-height: 210px;
+      max-height: var(--pv-max-h, 240px);
       margin: 0 auto;
       border-radius: 10px;
       overflow: hidden;
@@ -16237,6 +16592,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .welcome-pv-frame img,
@@ -16246,6 +16603,318 @@
       width: 100%;
       height: 100%;
       display: block;
+      pointer-events: none;
+    }
+
+    .welcome-pv-card.pv-expanded {
+      --pv-max-h: min(56vh, 470px);
+    }
+
+    .welcome-pv-card.pv-collapsed .welcome-pv-frame,
+    .welcome-pv-card.pv-collapsed .wpv-toolbar {
+      display: none !important;
+    }
+
+    .welcome-pv-card.pv-collapsed .welcome-pv-head {
+      margin-bottom: 0;
+    }
+
+    /* Interactive drag & corner-resize overlay inside Welcome live preview */
+    .wpv-interact {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .wpv-interact[hidden] {
+      display: none !important;
+    }
+
+    .wpv-guide {
+      position: absolute;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+      z-index: 5;
+    }
+
+    .wpv-guide.on {
+      opacity: 1;
+    }
+
+    .wpv-guide-x {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-left: 1.5px dashed rgba(47, 111, 237, 0.92);
+      box-shadow: 0 0 6px rgba(47, 111, 237, 0.55);
+    }
+
+    .wpv-guide-y {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 0;
+      border-top: 1.5px dashed rgba(47, 111, 237, 0.92);
+      box-shadow: 0 0 6px rgba(47, 111, 237, 0.55);
+    }
+
+    .wpv-box {
+      position: absolute;
+      border: 1.5px dashed rgba(255, 255, 255, 0.55);
+      border-radius: 8px;
+      box-sizing: border-box;
+      cursor: grab;
+      touch-action: none;
+      transition: border-color 0.12s ease, box-shadow 0.12s ease;
+      z-index: 6;
+    }
+
+    .wpv-box:hover {
+      border-color: rgba(124, 196, 255, 0.95);
+    }
+
+    .wpv-box.sel {
+      border: 2px dashed #3b82f6;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 12px rgba(59, 130, 246, 0.35);
+      z-index: 8;
+    }
+
+    .wpv-box.dragging {
+      cursor: grabbing;
+    }
+
+    .wpv-box[hidden] {
+      display: none !important;
+    }
+
+    .wpv-tag {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(24, 24, 27, 0.84);
+      color: #fff;
+      font: 700 9.5px/1.35 'Manrope', sans-serif;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+
+    .wpv-box.sel .wpv-tag,
+    .wpv-box:hover .wpv-tag {
+      opacity: 1;
+    }
+
+    .wpv-h {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid #2563eb;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      touch-action: none;
+      box-sizing: border-box;
+      z-index: 9;
+      transition: opacity 0.12s ease, transform 0.1s ease;
+    }
+
+    .wpv-box.sel .wpv-h {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .wpv-h:hover,
+    .wpv-h:active {
+      transform: scale(1.25);
+      background: #dbeafe;
+    }
+
+    .wpv-h.tl { top: -7px; left: -7px; cursor: nwse-resize; }
+    .wpv-h.tr { top: -7px; right: -7px; cursor: nesw-resize; }
+    .wpv-h.bl { bottom: -7px; left: -7px; cursor: nesw-resize; }
+    .wpv-h.br { bottom: -7px; right: -7px; cursor: nwse-resize; }
+
+    /* Compact card position & resize bar inside the sticky Welcome preview */
+    .wpv-toolbar {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .wpv-toolbar[hidden] {
+      display: none !important;
+    }
+
+    .wpv-tb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .wpv-target-seg,
+    .wpv-snap-group,
+    .wpv-size-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .wpv-target-seg[hidden] {
+      display: none !important;
+    }
+
+    .wpv-pill {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 4px 9px;
+      min-height: 28px;
+      font: 700 11.5px 'Manrope', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+
+    .wpv-pill:hover {
+      border-color: var(--brand);
+    }
+
+    .wpv-pill.on {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    .wpv-pill.wpv-sq {
+      min-width: 28px;
+      padding: 0 7px;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .wpv-pill.wpv-reset {
+      color: var(--ink-dim);
+    }
+
+    .wpv-pct {
+      font: 800 11.5px 'Manrope', monospace;
+      color: var(--ink);
+      min-width: 38px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .wpv-tip {
+      margin: 0;
+      font: 600 11px 'Manrope', sans-serif;
+      color: var(--ink-dim);
+      text-align: center;
+    }
+
+    /* Sticky preview on portrait / narrow screens: stays pinned while scrolling controls below */
+    @media (max-width: 899px), (orientation: portrait) {
+      #welcomePvCard,
+      #afterPvCard {
+        position: sticky;
+        top: max(6px, env(safe-area-inset-top));
+        z-index: 28;
+        background: rgba(250, 247, 242, 0.96);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 10px 26px rgba(28, 26, 30, 0.13);
+        --pv-max-h: clamp(195px, 30vh, 290px);
+      }
+
+      #welcomePvCard.pv-expanded,
+      #afterPvCard.pv-expanded {
+        --pv-max-h: min(56vh, 460px);
+      }
+    }
+
+    /* Split 2-column sticky preview on wide desktop screens when editing Welcome or Result & QR */
+    @media (min-width: 900px) and (orientation: landscape) {
+      body.setup-welcome-pv .setup-shell > #previewSection:not(.docked),
+      body.setup-after-pv .setup-shell > #previewSection:not(.docked) {
+        display: none !important;
+      }
+
+      body.setup-welcome-pv .setup-shell > #step7,
+      body.setup-after-pv .setup-shell > #step7 {
+        grid-column: 1 / -1;
+        width: 100%;
+      }
+
+      body.setup-welcome-pv #welcomeOpts {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+        column-gap: 20px;
+        align-items: start;
+      }
+
+      body.setup-welcome-pv #welcomeOpts > #welcomePvCard {
+        grid-column: 2;
+        grid-row: 1 / span 12;
+        position: sticky;
+        top: 12px;
+        margin: 0 !important;
+        --pv-max-h: min(56vh, 460px);
+      }
+
+      body.setup-welcome-pv #welcomeOpts > #welcomeSubTabs {
+        grid-column: 1;
+        margin-top: 0;
+      }
+
+      body.setup-welcome-pv #welcomeOpts > .w7-pane {
+        grid-column: 1;
+      }
+
+      body.setup-after-pv #afterSection {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(310px, 410px);
+        column-gap: 20px;
+        align-items: start;
+      }
+
+      body.setup-after-pv #afterSection > *:not(#afterPvCard) {
+        grid-column: 1;
+      }
+
+      body.setup-after-pv #afterSection > .panel-label,
+      body.setup-after-pv #afterSection > .step-lead {
+        grid-column: 1 / -1;
+      }
+
+      body.setup-after-pv #afterSection > #afterPvCard {
+        grid-column: 2;
+        grid-row: 3 / span 20;
+        position: sticky;
+        top: 12px;
+        margin: 0 !important;
+        --pv-max-h: min(56vh, 460px);
+      }
+
+      .welcome-pv-ctl[data-mobile-only] {
+        display: none;
+      }
     }
 
     .w7-subtabs {
@@ -16657,10 +17326,30 @@
       background: #000 !important;
     }
 
-    body.stage-full.has-film-shots .app-shell .stage-frame,
-    body.stage-full.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
+    body.stage-full.film-pos-side.has-film-shots .app-shell .stage-frame,
+    body.stage-full.film-pos-side.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
       width: min(calc(100vw - 2 * (clamp(64px, 9vmin, 120px) + 28px)), calc(var(--vh) * var(--cam-aspect, .8))) !important;
       width: min(calc(100vw - 2 * (clamp(64px, 9vmin, 120px) + 28px)), calc(100dvh * var(--cam-aspect, .8))) !important;
+    }
+
+    /* Default dslrBooth bottom preview bar: stage sits cleanly above the bottom shot bar & controls */
+    body.stage-full:not(.film-pos-side).has-film-shots .app-shell .stage-wrap,
+    body.stage-full:not(.film-pos-side).stage-review .app-shell .stage-wrap,
+    body.stage-full:not(.film-pos-side).layout-editing .app-shell .stage-wrap {
+      box-sizing: border-box !important;
+      padding-top: var(--stage-top-reserve, 0px) !important;
+      padding-bottom: var(--stage-bottom-reserve, 0px) !important;
+    }
+
+    body.stage-full:not(.film-pos-side).has-film-shots .app-shell .stage-frame,
+    body.stage-full:not(.film-pos-side).has-film-shots.in-session.shooting .app-shell.capturing .stage-frame,
+    body.stage-full:not(.film-pos-side).stage-review .app-shell .stage-frame,
+    body.stage-full:not(.film-pos-side).stage-review.in-session.shooting .app-shell.capturing .stage-frame,
+    body.stage-full:not(.film-pos-side).layout-editing .app-shell .stage-frame {
+      width: min(100vw, calc((var(--vh, 100dvh) - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) * var(--cam-aspect, .8))) !important;
+      width: min(100vw, calc((100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) * var(--cam-aspect, .8))) !important;
+      max-height: calc(var(--vh, 100dvh) - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) !important;
+      max-height: calc(100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) !important;
     }
 
     body.stage-full .sprockets,
@@ -16690,27 +17379,63 @@
       display: none !important;
     }
 
-    /* thumbnails: a floating column in the top-right corner of the screen, always on top and never covered */
+    /* thumbnails: default dslrBooth-style horizontal bar at bottom (big & clear for 1..4 shots, auto-fits up to 8, scrolls smoothly beyond) */
     body.stage-full .app-shell .film-track {
       position: fixed !important;
-      top: max(16px, env(safe-area-inset-top));
-      right: max(16px, env(safe-area-inset-right));
-      left: auto;
-      bottom: auto;
+      left: 50% !important;
+      right: auto !important;
+      top: auto !important;
+      bottom: var(--film-bottom-offset, max(18px, env(safe-area-inset-bottom))) !important;
+      transform: translateX(-50%) !important;
       z-index: 50 !important;
       width: auto !important;
+      max-width: calc(100vw - 20px) !important;
       display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: var(--film-gap, 10px) !important;
+      margin: 0 !important;
+      padding: var(--film-pady, 8px) var(--film-padx, 10px) !important;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      background: rgba(12, 11, 16, .66);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .42);
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: visible;
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.stage-full .app-shell .film-track.is-scroll {
+      justify-content: flex-start !important;
+    }
+
+    /* Optional Right-Side mode (when operator chooses Right side in Display & monitor size / Resize Layout) */
+    body.stage-full.film-pos-side .app-shell .film-track {
+      top: max(16px, env(safe-area-inset-top)) !important;
+      right: max(16px, env(safe-area-inset-right)) !important;
+      left: auto !important;
+      bottom: auto !important;
+      transform: none !important;
       flex-direction: column !important;
       align-items: stretch !important;
+      justify-content: flex-start !important;
       gap: 8px !important;
-      margin: 0 !important;
-      padding: 8px;
+      padding: 8px !important;
       border-radius: 16px;
+      border: 0;
       background: rgba(0, 0, 0, .55);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-      max-height: calc(var(--vh) - 120px);
-      overflow: auto;
+      box-shadow: none;
+      max-width: none !important;
+      max-height: calc(var(--vh) - 120px) !important;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     body.stage-full .app-shell .film-track:empty {
@@ -16718,9 +17443,43 @@
     }
 
     body.stage-full .app-shell .film-track .film-frame {
+      position: relative;
+      width: var(--film-fw, clamp(96px, 16vw, 220px)) !important;
+      height: var(--film-fh, auto) !important;
+      aspect-ratio: var(--box-aspect, .8);
+      flex: 0 0 auto !important;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .38);
+      animation: pbFilmPop .22s cubic-bezier(.16, 1, .3, 1);
+    }
+
+    body.stage-full.film-pos-side .app-shell .film-track .film-frame {
       width: clamp(64px, 9vmin, 120px) !important;
       height: auto !important;
-      aspect-ratio: var(--box-aspect, .8);
+    }
+
+    .film-frame .film-num {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: rgba(14, 12, 18, .72);
+      border: 1px solid rgba(255, 255, 255, .28);
+      color: #fff;
+      font: 800 11px/18px 'Manrope', sans-serif;
+      text-align: center;
+      pointer-events: none;
+      z-index: 2;
+      box-sizing: border-box;
+    }
+
+    @keyframes pbFilmPop {
+      from { opacity: 0; transform: scale(.86) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
     /* buttons: see-through pills, bottom centre */
@@ -16808,12 +17567,17 @@
 
     /* review (Retake / Done): the finished photo sits higher, clear of the buttons and the thumbnails */
     body.stage-review .app-shell .stage-wrap {
+      align-items: center !important;
+      padding-top: max(14px, env(safe-area-inset-top)) !important;
+    }
+
+    body.stage-review.film-pos-side .app-shell .stage-wrap {
       align-items: flex-start !important;
       padding-top: max(16px, env(safe-area-inset-top)) !important;
     }
 
-    body.stage-review .app-shell .stage-frame {
-      width: min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((var(--vh) - 150px) * var(--cam-aspect, .8))) !important;
+    body.stage-review.film-pos-side .app-shell .stage-frame {
+      width: min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((var(--vh) - calc(80px + 70px * min(var(--ui-btn-scale, 1), 2))) * var(--cam-aspect, .8))) !important;
     }
 
     /* Review: hide the wordy hint pill — the buttons speak for themselves */
@@ -16821,8 +17585,8 @@
       display: none !important;
     }
 
-    /* Review: enlarge the side thumbnails so guests can clearly see their photos */
-    body.stage-review .app-shell .film-track .film-frame {
+    /* Review (side mode): enlarge the side thumbnails so guests can clearly see their photos */
+    body.stage-review.film-pos-side .app-shell .film-track .film-frame {
       width: clamp(80px, 12vmin, 160px) !important;
     }
 
@@ -16886,7 +17650,7 @@
       padding: 0 4px;
     }
 
-    body.stage-review.stage-framing .app-shell .stage-frame {
+    body.stage-review.stage-framing.film-pos-side .app-shell .stage-frame {
       width: min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((var(--vh) - 196px) * var(--cam-aspect, .8))) !important;
     }
 
@@ -18796,37 +19560,49 @@
         inset: 0 !important;
       }
 
-      /* Camera frame spans 100vw width and is centered */
+      /* Camera frame spans 100vw width and is centered (when bottom bar is active, clears it cleanly) */
       body.stage-full .app-shell .stage-frame,
       body.stage-full.in-session.shooting .app-shell.capturing .stage-frame,
-      body.stage-full.has-film-shots .app-shell .stage-frame,
-      body.stage-full.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
+      body.stage-full.film-pos-side.has-film-shots .app-shell .stage-frame,
+      body.stage-full.film-pos-side.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
         width: 100vw !important;
         max-width: 100vw !important;
         margin: auto 0 !important;
       }
 
-      /* Portrait review with framing bar: keep photo clear of both framing bar and Cancel/Print row */
-      body.stage-review.stage-framing .app-shell .stage-wrap,
-      body.stage-review.stage-framing.in-session .app-shell.capturing .stage-wrap {
+      body.stage-full:not(.film-pos-side).has-film-shots .app-shell .stage-frame,
+      body.stage-full:not(.film-pos-side).has-film-shots.in-session.shooting .app-shell.capturing .stage-frame,
+      body.stage-full:not(.film-pos-side).stage-review .app-shell .stage-frame,
+      body.stage-full:not(.film-pos-side).stage-review.in-session.shooting .app-shell.capturing .stage-frame,
+      body.stage-full:not(.film-pos-side).layout-editing .app-shell .stage-frame {
+        width: min(100vw, calc((100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) * var(--cam-aspect, .8))) !important;
+        max-width: 100vw !important;
+        max-height: calc(100dvh - var(--stage-bottom-reserve, 0px) - var(--stage-top-reserve, 0px)) !important;
+        height: auto !important;
+        margin: auto !important;
+      }
+
+      /* Portrait review with framing bar (side mode): keep photo clear of both framing bar and Cancel/Print row */
+      body.stage-review.stage-framing.film-pos-side .app-shell .stage-wrap,
+      body.stage-review.stage-framing.film-pos-side.in-session .app-shell.capturing .stage-wrap {
         justify-content: flex-start !important;
         padding-top: max(12px, env(safe-area-inset-top)) !important;
         padding-bottom: 148px !important;
       }
 
-      body.stage-review.stage-framing .app-shell .stage-frame,
-      body.stage-review.stage-framing.in-session.shooting .app-shell.capturing .stage-frame,
-      body.stage-review.stage-framing.has-film-shots .app-shell .stage-frame,
-      body.stage-review.stage-framing.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
+      body.stage-review.stage-framing.film-pos-side .app-shell .stage-frame,
+      body.stage-review.stage-framing.film-pos-side.in-session.shooting .app-shell.capturing .stage-frame,
+      body.stage-review.stage-framing.film-pos-side.has-film-shots .app-shell .stage-frame,
+      body.stage-review.stage-framing.film-pos-side.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
         max-height: calc(var(--vh, 100dvh) - 164px) !important;
         height: calc(var(--vh, 100dvh) - 164px) !important;
         margin: 0 auto !important;
       }
 
-      /* Shots preview: floating vertical stack on the right side, layered top-to-bottom */
-      body.stage-full .app-shell .film-track,
-      body.stage-review .app-shell .film-track,
-      body.in-session .app-shell.capturing .film-track {
+      /* Optional right-side stack in portrait (only when operator explicitly selects Side mode) */
+      body.stage-full.film-pos-side .app-shell .film-track,
+      body.stage-review.film-pos-side .app-shell .film-track,
+      body.in-session.film-pos-side .app-shell.capturing .film-track {
         position: fixed !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
@@ -18850,9 +19626,9 @@
         overflow-x: hidden !important;
       }
 
-      body.stage-full .app-shell .film-track .film-frame,
-      body.stage-review .app-shell .film-track .film-frame,
-      body.in-session .app-shell.capturing .film-track .film-frame {
+      body.stage-full.film-pos-side .app-shell .film-track .film-frame,
+      body.stage-review.film-pos-side .app-shell .film-track .film-frame,
+      body.in-session.film-pos-side .app-shell.capturing .film-track .film-frame {
         width: clamp(54px, 12vw, 84px) !important;
         height: auto !important;
         aspect-ratio: var(--box-aspect, 0.8) !important;
@@ -20165,12 +20941,15 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      width: 24px;
-      height: 24px;
+      width: calc(24px * min(max(var(--ui-btn-scale, 1), 1), 1.45));
+      height: calc(24px * min(max(var(--ui-btn-scale, 1), 1), 1.45));
       border-radius: 50%;
       background: rgba(16, 15, 20, 0.72);
       color: #fff;
-      font: 800 13px/24px 'Manrope', sans-serif;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: calc(13px * min(max(var(--ui-btn-scale, 1), 1), 1.45));
+      line-height: calc(24px * min(max(var(--ui-btn-scale, 1), 1), 1.45));
       text-align: center;
       pointer-events: none;
       opacity: 0.85;
@@ -20179,10 +20958,10 @@
     .film-frame.picked::after {
       content: '↺ Retake';
       width: auto;
-      padding: 0 8px;
+      padding: 0 calc(8px * min(max(var(--ui-btn-scale, 1), 1), 1.45));
       border-radius: 999px;
       background: var(--brand, #C93D27);
-      font-size: 11px;
+      font-size: calc(11px * min(max(var(--ui-btn-scale, 1), 1), 1.45));
       opacity: 1;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
     }
@@ -20489,19 +21268,30 @@
     }
 
     .sc-btn {
-      font-size: calc(13.5px * var(--ui-btn-scale, 1)) !important;
-      min-height: calc(40px * var(--ui-btn-scale, 1)) !important;
-      padding: calc(7px * var(--ui-btn-scale, 1)) calc(16px * var(--ui-btn-scale, 1)) !important;
+      font-size: calc(15px * min(var(--ui-btn-scale, 1), 2)) !important;
+      min-height: calc(44px * min(var(--ui-btn-scale, 1), 2)) !important;
+      padding: calc(10px * min(var(--ui-btn-scale, 1), 2)) calc(22px * min(var(--ui-btn-scale, 1), 2)) !important;
+    }
+
+    body.stage-full .app-shell .session-controls .sc-row,
+    body.in-session .app-shell.capturing .session-controls .sc-row,
+    body.layout-editing .session-controls.edit-preview .sc-row {
+      flex-wrap: wrap !important;
+      justify-content: center !important;
+      max-width: calc(100vw - 24px) !important;
     }
 
     body.stage-full .app-shell .session-controls .sc-btn,
-    body.in-session .app-shell.capturing .session-controls .sc-btn {
-      font-size: calc(13.5px * min(var(--ui-btn-scale, 1), 1.35)) !important;
-      min-height: calc(38px * min(var(--ui-btn-scale, 1), 1.35)) !important;
-      padding: calc(7px * min(var(--ui-btn-scale, 1), 1.3)) calc(14px * min(var(--ui-btn-scale, 1), 1.3)) !important;
-      max-width: 100% !important;
+    body.in-session .app-shell.capturing .session-controls .sc-btn,
+    body.layout-editing .session-controls.edit-preview .sc-btn {
+      font-size: calc(15px * min(var(--ui-btn-scale, 1), 2)) !important;
+      min-height: calc(44px * min(var(--ui-btn-scale, 1), 2)) !important;
+      padding: calc(10px * min(var(--ui-btn-scale, 1), 2)) calc(22px * min(var(--ui-btn-scale, 1), 2)) !important;
+      max-width: min(100%, calc(100vw - 32px)) !important;
       box-sizing: border-box !important;
-      white-space: nowrap !important;
+      white-space: normal !important;
+      text-align: center !important;
+      line-height: 1.15 !important;
     }
 
     /* Scalable side photos per session (Film Track) */
@@ -20842,6 +21632,7 @@
       pointer-events: auto !important;
       background: rgba(0, 0, 0, 0.18) !important;
       justify-content: flex-end !important;
+      padding-bottom: 92px !important;
     }
 
     body.layout-editing .ready-overlay .ready-actions.edit-preview {
@@ -20849,13 +21640,41 @@
       position: relative !important;
       align-items: center !important;
       justify-content: center !important;
-      margin: 0 auto 16px !important;
+      margin: 0 auto 12px !important;
       padding: 10px 18px !important;
       border-radius: 999px !important;
       background: rgba(0, 0, 0, 0.45) !important;
       backdrop-filter: blur(8px) !important;
       -webkit-backdrop-filter: blur(8px) !important;
       max-width: calc(100% - 16px);
+    }
+
+    body.layout-editing .session-controls.edit-preview {
+      display: flex !important;
+      position: fixed !important;
+      left: 50% !important;
+      bottom: max(18px, 2.4vh) !important;
+      transform: translateX(-50%) !important;
+      z-index: 60 !important;
+      pointer-events: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: max-content !important;
+      max-width: calc(100vw - 24px) !important;
+    }
+
+    body.layout-editing .session-controls.edit-preview .sc-row {
+      display: inline-flex !important;
+      position: relative !important;
+      padding: 6px 10px !important;
+      border-radius: 999px !important;
+      background: rgba(0, 0, 0, 0.5) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+    }
+
+    body.layout-editing .session-controls.edit-preview .sc-btn {
+      display: inline-flex !important;
     }
 
     /* 4 Corner Sticker-Style Resize Handles */
@@ -20933,7 +21752,8 @@
     /* Children ignore clicks while editing so dragging handles doesn't trigger buttons */
     body.layout-editing .countdown-overlay.edit-preview>*:not(.leb-handle),
     body.layout-editing .film-track.edit-preview .film-frame>*:not(.leb-handle),
-    body.layout-editing .ready-actions.edit-preview>*:not(.leb-handle) {
+    body.layout-editing .ready-actions.edit-preview>*:not(.leb-handle),
+    body.layout-editing .session-controls.edit-preview .sc-row>*:not(.leb-handle) {
       pointer-events: none !important;
     }
 
@@ -20952,9 +21772,14 @@
       align-items: center;
     }
 
-    body.stage-full.layout-editing .film-frame.sample-frame {
+    body.stage-full.film-pos-side.layout-editing .film-frame.sample-frame {
       width: min(calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)), calc(((var(--vh, 100vh) - 130px) / var(--n, 4) - 10px) * var(--box-aspect, 0.8))) !important;
       height: auto !important;
+    }
+
+    body.stage-full:not(.film-pos-side).layout-editing .film-frame.sample-frame {
+      width: var(--film-fw, clamp(96px, 16vw, 200px)) !important;
+      height: var(--film-fh, auto) !important;
     }
 
     body.layout-editing .film-frame.sample-frame .sample-svg-wrap {
@@ -23822,8 +24647,14 @@
             <span>Mirror the live view</span>
             <input type="checkbox" id="mirrorToggle">
           </label>
-          <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos
-            match the preview.</p>
+          <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror on screen, while saved and
+            printed photos stay normal (text reads the right way).</p>
+          <label class="switch-row" id="mirrorOutputRow" style="display:none; margin-top:4px;">
+            <span>Mirror saved &amp; printed photos too</span>
+            <input type="checkbox" id="mirrorOutputToggle">
+          </label>
+          <p class="panel-hint" id="mirrorOutputHint" style="display:none;">Off (recommended): prints and saved photos
+            flip back to normal orientation. Turn on only if you want selfie-mirrored prints.</p>
           <div id="camSaveRow" style="display:none; margin-top:10px;">
             <p class="panel-hint" id="camSaveHint">The camera sensor, light and mirror rest when not in use, to save
               battery and prevent heating.
@@ -24688,14 +25519,28 @@
               </div>
               <div class="fb-row"><span class="lbl">Video quality</span>
                 <select id="gbQuality" class="pillify" aria-label="Video quality on this device">
-                  <option value="auto" selected>Auto (recommended)</option>
+                  <option value="auto" selected>Auto — HD (recommended)</option>
                   <option value="smooth">Smooth (480p, lightest)</option>
-                  <option value="sd">Standard (720p)</option>
-                  <option value="hd">High (1080p)</option>
+                  <option value="sd">Standard HD (720p)</option>
+                  <option value="hd">Full HD (1080p)</option>
                 </select>
               </div>
-              <p class="panel-hint" style="margin:4px 0 0;">Applies to this device only. Choose Smooth if messages lag.
+              <p class="panel-hint" style="margin:4px 0 0;">Applies to this device only. Auto records crisp HD without
+                lag; choose Smooth only on very old devices.
               </p>
+              <div id="gbDslrBox" style="display:none; margin-top:8px;">
+                <div class="fb-row"><span class="lbl">DSLR video mode</span>
+                  <select id="gbDslrMode" class="pillify" aria-label="DSLR video recording mode">
+                    <option value="hd" selected>DSLR Full HD 1080p (recommended)</option>
+                    <option value="live">Fast Live View (instant preview)</option>
+                  </select>
+                </div>
+                <label class="switch-row"><span>Use laptop microphone for DSLR video</span><input type="checkbox"
+                    id="gbDslrMic"></label>
+                <p class="panel-hint" style="margin:4px 0 0;">DSLR Full HD records directly on Canon/Nikon in Movie mode
+                  for crisp 1080p (flip the camera dial to Movie &amp; insert an SD card). Turn on laptop mic only if
+                  your DSLR has no microphone attached.</p>
+              </div>
               <div id="gbLookBox">
                 <div class="fb-row"><span class="lbl">Starting look</span>
                   <select id="gbLook" class="cam-select" aria-label="Starting look for video messages">
@@ -24741,6 +25586,10 @@
               </div>
               <p class="panel-hint" style="margin:6px 0 0;">Messages appear in your online gallery under
                 <b>Guestbook</b>.</p>
+              <label class="switch-row" style="margin-top:8px;"><span>Show shortcut on Welcome screen</span><input
+                  type="checkbox" id="gbWelcomeShortcutToggle"></label>
+              <p class="panel-hint" style="margin:3px 0 0;">Adds a direct Video Message button next to Start on the
+                welcome screen (synced with Step 7 · Welcome).</p>
             </div>
           </div>
         </div>
@@ -24823,10 +25672,36 @@
                   PIN</button>
               </div>
             </div>
-            <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
-            <p class="panel-hint" style="margin:0 0 6px;">Guests scan the Wi-Fi QR to join, then their photo QR. The
-              Wi-Fi this device is on is filled in when the app can read it. Leave empty if they already know the Wi-Fi.
-            </p>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:14px 0 6px;">
+              <p class="sub-label" style="margin:0;">Booth Wi-Fi for guests (optional)</p>
+              <button type="button" class="pb-guide-q" id="boothWifiGuideBtn" aria-expanded="false"
+                aria-controls="boothWifiGuide"
+                title="Offline Booth Wi-Fi guide: turn this on and let guests connect before scanning their photo or GIF QR"
+                aria-label="Offline Booth Wi-Fi guide">?</button>
+            </div>
+            <div id="boothWifiGuide" class="tb-guide print-guide" hidden>
+              <h4>Offline Photo &amp; GIF QR Guide (No Internet Needed)</h4>
+              <p class="tb-g-head">1. Turn on Booth Wi-Fi first</p>
+              <ol>
+                <li><b>Windows laptop / Android tablet:</b> Switch ON <b>&ldquo;Make this laptop / tablet the booth Wi-Fi&rdquo;</b> below (and tick <b>&ldquo;Turn it on whenever the app opens&rdquo;</b>). Wait until it shows <b>&ldquo;The booth Wi-Fi is on &#10003;&rdquo;</b> and <b>Guests&rsquo; phones</b> above shows an address with <b>&#10003;</b>.</li>
+                <li><b>iPad, Mac, or pocket router / phone hotspot:</b> Connect this device to your offline pocket Wi-Fi router or spare phone hotspot (no SIM/data needed), then enter its <b>Wi-Fi name &amp; password</b> below (or click <b>Use current Wi-Fi</b> on laptop) so the Join QR appears.</li>
+                <li>Click <b>Download WIFI QR Sign</b> to print a table sign for guests &mdash; or tap the <b>Wi-Fi</b> button in the bottom dock anytime during the event.</li>
+              </ol>
+              <p class="tb-g-head">2. Guests connect to Booth Wi-Fi BEFORE scanning</p>
+              <ol>
+                <li><b>Join first:</b> Guests&rsquo; phones <b>must connect to this Booth Wi-Fi before scanning their photo or GIF QR</b> &mdash; otherwise the offline download page will not open.</li>
+                <li>Guests scan the <b>Join Booth Wi-Fi QR</b> (shown next to the photo/GIF QR or on your printed Wi-Fi sign), or connect manually in their phone&rsquo;s Wi-Fi settings using the name &amp; password below.</li>
+                <li>Once connected to the Booth Wi-Fi, guests scan the <b>Photo / GIF QR</b> with their phone camera to open and save their prints, solo shots, and GIFs &mdash; 100% offline.</li>
+              </ol>
+              <p class="tb-g-head">3. If a guest&rsquo;s phone won&rsquo;t open the photo / GIF</p>
+              <ul>
+                <li><b>&ldquo;No internet connection&rdquo; prompt:</b> Tap <b>Stay connected</b> / <b>Keep trying Wi-Fi</b> &mdash; the phone is talking directly to the booth, so no internet is needed.</li>
+                <li><b>Mobile data taking over:</b> Turn <b>Mobile Data OFF</b> briefly (or <b>Airplane Mode ON &rarr; Wi-Fi ON</b>) so the phone opens the booth&rsquo;s local QR instead of cellular data.</li>
+                <li><b>Big crowds / weak venue Wi-Fi:</b> Disconnect the laptop from weak venue Wi-Fi while hosting Booth Wi-Fi so iPhones stay connected, or use an offline pocket router for 8+ phones at once.</li>
+              </ul>
+              <p class="tb-g-foot"><a href="https://photobooth4u.netlify.app/how-to-offline-qr/" target="_blank" rel="noopener">Open full visual Offline QR &amp; Booth Wi-Fi guide ↗</a></p>
+            </div>
+            <p class="panel-hint" id="deskWifiLead" style="margin:0 0 6px;"><b>Offline events:</b> Turn this on and let guests connect to this Booth Wi-Fi <b>before</b> scanning their photo or GIF QR. Tap <b>?</b> for step-by-step help.</p>
             <div id="deskHotspotBox" style="display:none; margin:0 0 12px;">
               <label class="switch-row"><span id="deskHotspotLabel">Make this laptop the booth Wi-Fi (no router
                   needed)</span><input type="checkbox" id="deskHotspotOn"></label>
@@ -24890,6 +25765,13 @@
                   new</button>
                 <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this
                   laptop</button>
+              </div>
+              <div id="deskGfxBox" style="display:none; margin:10px 0 6px;">
+                <p class="sub-label" style="margin:0 0 4px;">Display &amp; freeze protection</p>
+                <p class="panel-hint" id="deskGfxHint" style="margin:0 0 6px;"></p>
+                <div class="desk-row">
+                  <button type="button" class="action-btn" id="deskGfxToggleBtn" style="width:auto; margin:0;"></button>
+                </div>
               </div>
             </details>
           </div>
@@ -25031,10 +25913,13 @@
           <p class="panel-hint step-lead">One place for how guests get photos after the last shot — QR code, LumaShare
             pop-up, No QR (prints only), or a separate Sharing Station.</p>
           <div class="welcome-pv-card" id="afterPvCard" style="margin-top:8px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+            <div class="welcome-pv-head">
               <span class="sub-label" style="margin:0;">Live preview</span>
-              <span class="panel-hint" id="afterPvMeta" style="margin:0; font-size:11.5px; text-align:right;">Matches
-                Welcome screen</span>
+              <div class="welcome-pv-head-r">
+                <span class="panel-hint" id="afterPvMeta" style="margin:0; font-size:11.5px; text-align:right;">Matches
+                  Welcome screen</span>
+                <button type="button" class="welcome-pv-ctl" id="afterPvHideBtn" data-mobile-only title="Collapse or show preview">Hide</button>
+              </div>
             </div>
             <div class="welcome-pv-frame" id="afterPvFrame">
               <img id="afterPreviewImg" alt="QR and sharing screen preview">
@@ -25430,7 +26315,10 @@
               <select class="mini-select pillify" id="uiBtnScaleSelect">
                 <option value="0.88">Compact (Saves vertical space)</option>
                 <option value="1" selected>Standard</option>
-                <option value="1.15">Large</option>
+                <option value="1.2">Large (120%)</option>
+                <option value="1.45">Extra Large (145%)</option>
+                <option value="1.7">Jumbo (170%)</option>
+                <option value="1.95">Max Touch (195%)</option>
               </select>
             </div>
             <div class="opt-row" style="margin-top:8px;">
@@ -25470,10 +26358,14 @@
               type="checkbox" id="welcomeToggle" checked></label>
           <div id="welcomeOpts" style="margin-top:12px;">
             <div class="welcome-pv-card" id="welcomePvCard" style="margin-top:0;">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <div class="welcome-pv-head">
                 <span class="sub-label" style="margin:0;">Live preview</span>
-                <span class="panel-hint" id="welcomePvMeta" style="margin:0; font-size:11.5px;">Matches Photo
-                  Session</span>
+                <div class="welcome-pv-head-r">
+                  <span class="panel-hint" id="welcomePvMeta" style="margin:0; font-size:11.5px;">Matches Photo
+                    Session</span>
+                  <button type="button" class="welcome-pv-ctl" id="welcomePvSizeBtn" data-mobile-only title="Toggle larger preview">Expand</button>
+                  <button type="button" class="welcome-pv-ctl" id="welcomePvHideBtn" data-mobile-only title="Collapse or show preview">Hide</button>
+                </div>
               </div>
               <div class="welcome-pv-frame" id="welcomePvFrame">
                 <div class="welcome-pv-cam-hint" id="welcomePvCamHint"
@@ -25487,6 +26379,50 @@
                 </div>
                 <img id="welcomePreview" alt="Welcome screen preview">
                 <video id="welcomeVideoPreview" autoplay loop muted playsinline style="display:none;"></video>
+                <div class="welcome-editorial is-preview" id="welcomePvEditorial" hidden>
+                  <p class="welcome-editorial-kicker" id="welcomePvEdKicker" hidden></p>
+                  <h3 class="welcome-editorial-title" id="welcomePvEdTitle"></h3>
+                  <p class="welcome-editorial-sub" id="welcomePvEdSub"></p>
+                </div>
+                <div class="welcome-icon-dock is-preview" id="welcomePvIconDock" hidden></div>
+                <div class="wpv-interact" id="welcomePvInteract" hidden>
+                  <div class="wpv-guide wpv-guide-x" id="wpvGuideX"></div>
+                  <div class="wpv-guide wpv-guide-y" id="wpvGuideY"></div>
+                  <div class="wpv-box" id="wpvSampleBox" data-wpv="sample" hidden>
+                    <span class="wpv-tag">Sample</span>
+                    <i class="wpv-h tl" data-corner="tl"></i>
+                    <i class="wpv-h tr" data-corner="tr"></i>
+                    <i class="wpv-h bl" data-corner="bl"></i>
+                    <i class="wpv-h br" data-corner="br"></i>
+                  </div>
+                  <div class="wpv-box sel" id="wpvCardBox" data-wpv="card">
+                    <span class="wpv-tag">Card</span>
+                    <i class="wpv-h tl" data-corner="tl"></i>
+                    <i class="wpv-h tr" data-corner="tr"></i>
+                    <i class="wpv-h bl" data-corner="bl"></i>
+                    <i class="wpv-h br" data-corner="br"></i>
+                  </div>
+                </div>
+              </div>
+              <div class="wpv-toolbar" id="welcomeCardArrangeBar">
+                <div class="wpv-tb-row">
+                  <div class="wpv-target-seg" id="wpvTargetSeg" hidden>
+                    <button type="button" class="wpv-pill on" data-wpv-target="card">Card</button>
+                    <button type="button" class="wpv-pill" data-wpv-target="sample">Sample</button>
+                  </div>
+                  <div class="wpv-snap-group" id="wpvSnapGroup" aria-label="Quick vertical position">
+                    <button type="button" class="wpv-pill" data-wpv-pos="top" title="Place near top">Top</button>
+                    <button type="button" class="wpv-pill" data-wpv-pos="center" title="Center on screen">Center</button>
+                    <button type="button" class="wpv-pill" data-wpv-pos="bottom" title="Place near bottom">Bottom</button>
+                  </div>
+                  <div class="wpv-size-group">
+                    <button type="button" class="wpv-pill wpv-sq" id="wpvSizeDown" aria-label="Make smaller">&minus;</button>
+                    <span class="wpv-pct" id="wpvSizeVal">100%</span>
+                    <button type="button" class="wpv-pill wpv-sq" id="wpvSizeUp" aria-label="Make larger">+</button>
+                    <button type="button" class="wpv-pill wpv-reset" id="wpvResetBtn" title="Reset position and size">Reset</button>
+                  </div>
+                </div>
+                <p class="wpv-tip" id="wpvArrangeTip">Drag card on preview to move &middot; drag corners to resize</p>
               </div>
             </div>
 
@@ -25845,6 +26781,25 @@
                     type="checkbox" id="welcomeBtnToggle" checked></label>
                 <p class="panel-hint" id="welcomeBtnHint" style="margin:4px 0 0;">Turn off if your custom poster or
                   graphic already has a start button or instructions designed in.</p>
+                <div id="welcomeBtnStyleRow" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Button style</p>
+                  <div class="chip-row" id="welcomeBtnStyleChips">
+                    <button type="button" class="chip active" data-bstyle="pill">Classic pill</button>
+                    <button type="button" class="chip" data-bstyle="icon-pure">Circular icons (Clean)</button>
+                    <button type="button" class="chip" data-bstyle="icon-label">Icons + short label</button>
+                  </div>
+                </div>
+                <div id="welcomeShortcutsRow" style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(28,26,30,.08);">
+                  <p class="sub-label" style="margin:0 0 4px;">Quick-access mode shortcuts</p>
+                  <p class="panel-hint" style="margin:0 0 6px;">Put enabled booth modes directly on the welcome screen so guests see every option upfront (also visible when locked).</p>
+                  <label class="switch-row" id="welcomeVgRow"><span>Video Guestbook button</span><input
+                      type="checkbox" id="welcomeVgBtnToggle"></label>
+                  <label class="switch-row" id="welcome360Row"><span>360 Booth button</span><input
+                      type="checkbox" id="welcome360BtnToggle"></label>
+                  <label class="switch-row" id="welcomeOutPickRow"><span>Output choices (Photo / GIF / Flipbook)</span><input
+                      type="checkbox" id="welcomeOutPickToggle"></label>
+                  <p class="panel-hint" id="welcomeShortcutStatusHint" style="margin:4px 0 0; display:none; color:#9a5b13;"></p>
+                </div>
                 <div id="welcomeBtnOptions" style="margin-top:8px;">
                   <div id="welcomeMsgRow" style="margin-top:8px;">
                     <p class="sub-label" style="margin:0 0 4px;">Button text</p>
@@ -25890,6 +26845,7 @@
                       <button type="button" class="chip active" data-pos="bottom">Bottom</button>
                       <button type="button" class="chip" data-pos="center">Center</button>
                       <button type="button" class="chip" data-pos="lower">Lower third</button>
+                      <button type="button" class="chip" data-pos="right">Right stack (Editorial)</button>
                     </div>
                   </div>
                 </div>
@@ -26179,6 +27135,12 @@
           <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start">
             <img id="welcomeImg" alt="Welcome — tap to start">
             <video id="welcomeVideo" autoplay loop muted playsinline style="display:none;"></video>
+            <div class="welcome-editorial" id="welcomeEditorial" hidden>
+              <p class="welcome-editorial-kicker" id="welcomeEdKicker" hidden></p>
+              <h2 class="welcome-editorial-title" id="welcomeEdTitle"></h2>
+              <p class="welcome-editorial-sub" id="welcomeEdSub"></p>
+            </div>
+            <div class="welcome-icon-dock" id="welcomeIconDock" hidden></div>
             <div class="welcome-cta-overlay" id="welcomeCtaOverlay" style="display:none;">
               <button type="button" class="welcome-cta-btn" id="welcomeCtaBtn">Tap to start</button>
             </div>
@@ -27595,7 +28557,7 @@
     <p class="bp-title">Booth Wi-Fi</p><img id="wifiPopQr" alt="Wi-Fi QR code">
     <p class="gallery-link" id="wifiPopName" style="margin:0;font-weight:700;font-size:14px;color:var(--ink);"></p>
     <p class="gallery-link" id="wifiPopPass" style="margin:2px 0 10px;"></p>
-    <p class="gallery-link" style="margin:0;">Scan to join, then scan your photo QR.</p>
+    <p class="gallery-link" style="margin:0;">Scan to join, then scan your photo / GIF QR.</p>
   </div>
   <button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden><svg class="ic"
       aria-hidden="true">
@@ -32828,6 +33790,19 @@
         await saveSignPng(c, 'wifi-sign', name, 'Wi-Fi sign');
       }
       document.getElementById('wifiSignBtn').addEventListener('click', downloadWifiSign);
+      (function initBoothWifiGuide() {
+        var guideBtn = document.getElementById('boothWifiGuideBtn');
+        var guideBox = document.getElementById('boothWifiGuide');
+        if (!guideBtn || !guideBox) return;
+        guideBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var open = guideBox.hidden;
+          guideBox.hidden = !open;
+          guideBtn.classList.toggle('open', open);
+          guideBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      })();
 
       let resolveTimer = null;
 
@@ -34304,7 +35279,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (!activeShotMotion || activeShotMotion.shotIdx !== shotIdx || busy) return;
           busy = true;
           ctx.save();
-          if (typeof mirrorPreview === 'function' && mirrorPreview()) {
+          if (typeof mirrorOutput === 'function' && mirrorOutput()) {
             ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
           }
           try { ctx.drawImage(camFrameSource(), 0, 0, canvas.width, canvas.height); } catch (e) { }
@@ -34347,7 +35322,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
         var ctx = capture.context;
         ctx.save();
-        if (typeof mirrorPreview === 'function' && mirrorPreview()) { ctx.translate(capture.canvas.width, 0); ctx.scale(-1, 1); }
+        if (typeof mirrorOutput === 'function' && mirrorOutput()) { ctx.translate(capture.canvas.width, 0); ctx.scale(-1, 1); }
         try { ctx.drawImage(camFrameSource(), 0, 0, capture.canvas.width, capture.canvas.height); } catch (e) { }
         ctx.restore();
         capture.busy = true;
@@ -37314,7 +38289,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           _camHelperPollBusy = true;
           try {
             const was = usbCam.helperSees;
-            if (!(await camHelperProbe(3000)) || was) return;          // only when it newly appears
+            if (!(await camHelperProbe(5000)) || was) return;          // only when it newly appears
             if (state === 'capturing' || reconnectTimer || camInitInFlight) return;
             const cur = cameraSelect.options[cameraSelect.selectedIndex];
             const saved = savedCamera();
@@ -37329,7 +38304,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           } finally {
             _camHelperPollBusy = false;
           }
-        }, 6000);
+        }, 10000);
       }
       // Mac: when a camera is plugged in, let go of it (macOS grabs it first) and connect, like the Windows helper does.
       // In Chrome this needs the Helper (it was seen here before); the camera must have been allowed once.
@@ -37745,10 +38720,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (usbCam.shotAt) { usbLog('live-back', { afterShotMs: usbCam.frameAt - usbCam.shotAt, camera: usbCam.name }); usbCam.shotAt = 0; }
             usbCam.kicked = false;
             if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; usbLog('stall-over', { camera: usbCam.name }); }
-            // Helper: keep at most one picture per 55 ms (a quick camera is not hammered); a slow one is never delayed further.
-            const gapMs = prevArrive ? arrived - prevArrive : 55;
+            // Helper: keep at most one picture per 55 ms normally, or 33 ms (~30 fps) while Video Guestbook is open so live view stays fluid.
+            const minGap = (typeof vgIsOpen === 'function' && vgIsOpen()) ? 33 : 55;
+            const gapMs = prevArrive ? arrived - prevArrive : minGap;
             prevArrive = arrived;
-            await new Promise(r => setTimeout(r, helper ? Math.max(0, 55 - gapMs) : 45));
+            await new Promise(r => setTimeout(r, helper ? Math.max(0, minGap - gapMs) : 33));
           } catch (err) {
             ahead = null;   // a failed round: start the next one fresh
             // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
@@ -39370,32 +40346,54 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       // Mirror switch (Camera section): Auto mirrors every camera except ones
       // labelled back/rear; On/Off is the operator's choice, kept on this device.
+      // Live preview mirrors for a natural posing feel, while final outputs stay
+      // un-mirrored by default unless the operator opts into MIRROR_OUT_KEY.
       var MIRROR_KEY = 'pb4u.mirror';
+      var MIRROR_OUT_KEY = 'pb4u.mirrorOutput';
       function mirrorPref() { try { return localStorage.getItem(MIRROR_KEY) || 'auto'; } catch (e) { return 'auto'; } }
       function mirrorPreview() {
         const p = mirrorPref();
         return p === 'on' ? true : p === 'off' ? false : isFrontCamera();
       }
+      function mirrorOutputPref() { try { return localStorage.getItem(MIRROR_OUT_KEY) === 'on'; } catch (e) { return false; } }
+      function mirrorOutput() {
+        return mirrorPreview() && mirrorOutputPref();
+      }
       function applyMirror() {
-        video.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
+        const prev = mirrorPreview();
+        video.style.transform = prev ? 'scaleX(-1)' : 'scaleX(1)';
         try { document.getElementById('surroundVideo').style.transform = video.style.transform; } catch (e) { }
         try { if (typeof scpRefresh === 'function') scpRefresh(); } catch (e) { }
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
         try { if (typeof syncResultTheme === 'function') syncResultTheme(); } catch (e) { }
         try { if (typeof usbSyncStageCanvases === 'function') usbSyncStageCanvases(); } catch (e) { }
         const t = document.getElementById('mirrorToggle');
-        if (t) t.checked = mirrorPreview();
+        if (t) t.checked = prev;
+        const outRow = document.getElementById('mirrorOutputRow');
+        const outHint = document.getElementById('mirrorOutputHint');
+        const outToggle = document.getElementById('mirrorOutputToggle');
+        if (outRow) outRow.style.display = prev ? '' : 'none';
+        if (outHint) outHint.style.display = prev ? '' : 'none';
+        if (outToggle) outToggle.checked = mirrorOutputPref();
         // The tablet's guest screen mirrors its live picture from this same setting: send it the new value at once.
         try { if (typeof tabletBridgeSync === 'function') tabletBridgeSync(); } catch (e) { }
       }
       (function () {
         const t = document.getElementById('mirrorToggle');
-        if (!t) return;
-        t.addEventListener('change', () => {
-          try { localStorage.setItem(MIRROR_KEY, t.checked ? 'on' : 'off'); } catch (e) { }
-          applyMirror();
-          guestCall('camera');
-        });
+        if (t) {
+          t.addEventListener('change', () => {
+            try { localStorage.setItem(MIRROR_KEY, t.checked ? 'on' : 'off'); } catch (e) { }
+            applyMirror();
+            guestCall('camera');
+          });
+        }
+        const o = document.getElementById('mirrorOutputToggle');
+        if (o) {
+          o.addEventListener('change', () => {
+            try { localStorage.setItem(MIRROR_OUT_KEY, o.checked ? 'on' : 'off'); } catch (e) { }
+            applyMirror();
+          });
+        }
       })();
       function isFrontCamera() {
         if (nativeCam.active || (hasNativeCamBridge() && currentDeviceId && nativeCam.devicesById[currentDeviceId])) {
@@ -39458,9 +40456,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         c.width = sw;
         c.height = sh;
         const ctx = c.getContext('2d');
-        // The CSS mirror on <video> is display only, so flip here when Mirror is
-        // on: the saved / printed photo looks exactly like the live view.
-        if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+        // The CSS mirror on <video> is live-preview only; saved/printed photos stay normal
+        // unless the operator explicitly enables "Mirror saved & printed photos too".
+        if (mirrorOutput()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
         ctx.drawImage(src, sx, sy, sw, sh, 0, 0, c.width, c.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         try { if (typeof webcamApplyStack === 'function') webcamApplyStack(ctx, c.width, c.height); } catch (e) { }
@@ -39631,7 +40629,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
           const ctx = c.getContext('2d');
           ctx.imageSmoothingQuality = 'high';
-          const mir = mirrorPreview();
+          const mir = mirrorOutput();
           if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
           ctx.drawImage(bmp, 0, 0, c.width, c.height);
           bmp.close();
@@ -39739,7 +40737,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
             const ctx = c.getContext('2d');
             ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-            if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view, like the instant frame
+            if (typeof mirrorOutput === 'function' ? mirrorOutput() : mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match saved output orientation
             ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             if (gone()) { if (typeof pbReleaseCanvas === 'function') pbReleaseCanvas(c); return; }
@@ -39797,7 +40795,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 const blob = await resp.blob();
                 if (shotCanvases !== shots0 || (sess && sess.cancelled)) return;
                 const c = document.createElement('canvas');
-                const mir = mirrorPreview();
+                const mir = mirrorOutput();
                 if (typeof createImageBitmap === 'function') {
                   const bmp = await createImageBitmap(blob);
                   try {
@@ -39887,8 +40885,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const qp = camQOnShot(file, c, exif);   // the connected brand's profile: shrunk in steps + cleaned in its box, warned about ISO / shutter / focus
           const ctx = c.getContext('2d');
           ctx.imageSmoothingQuality = 'high';
-          const mir = mirrorPreview();
-          if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
+          const mir = mirrorOutput();
+          if (mir) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // only mirror output when explicitly enabled
           ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
           bmp.close();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -39985,7 +40983,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var UI_SCALE_PRESETS = {
         compact: { cd: 1.5, btn: 0.88, film: 0.95 },   // Tailored for 11.5" monitors: big countdown for guests, snug buttons, optimal side frames
         normal: { cd: 1.0, btn: 1.0, film: 1.0 },    // Standard 13"-16"
-        large: { cd: 1.3, btn: 1.15, film: 1.15 }    // Large displays / TV
+        large: { cd: 1.3, btn: 1.2, film: 1.15 }    // Large displays / TV
       };
 
       function syncGuestUiScale() {
@@ -40018,9 +41016,27 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var cdSel = document.getElementById('uiCdScaleSelect');
         var btnSel = document.getElementById('uiBtnScaleSelect');
         var filmSel = document.getElementById('uiFilmScaleSelect');
-        if (cdSel) cdSel.value = String(cd);
-        if (btnSel) btnSel.value = String(btn);
-        if (filmSel) filmSel.value = String(film);
+        function syncSel(sel, val) {
+          if (!sel) return;
+          var vStr = String(val);
+          var hasOpt = Array.prototype.some.call(sel.options, function (o) { return o.value === vStr && !o.dataset.custom; });
+          var customOpt = sel.querySelector('option[data-custom="1"]');
+          if (!hasOpt) {
+            if (!customOpt) {
+              customOpt = document.createElement('option');
+              customOpt.dataset.custom = '1';
+              sel.appendChild(customOpt);
+            }
+            customOpt.value = vStr;
+            customOpt.textContent = 'Custom (' + Math.round(val * 100) + '%)';
+          } else if (customOpt) {
+            customOpt.remove();
+          }
+          sel.value = vStr;
+        }
+        syncSel(cdSel, cd);
+        syncSel(btnSel, btn);
+        syncSel(filmSel, film);
 
         var chips = document.getElementById('uiScaleChips');
         if (chips) {
@@ -40222,6 +41238,35 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
         }
 
+        // Also show Retake / Save Photo buttons at bottom so operators can resize session review controls directly
+        var sc = document.getElementById('sessionControls');
+        if (sc) {
+          sc._lebPrevHidden = sc.hidden;
+          sc.hidden = false;
+          sc.classList.add('edit-preview');
+          var scRow = sc.querySelector('.sc-row');
+          var rb = document.getElementById('retakeBtn');
+          var db = document.getElementById('doneBtn');
+          var cb = document.getElementById('cancelSessionBtn');
+          if (rb) {
+            rb._lebPrevHidden = rb.hidden;
+            rb._lebPrevText = rb.textContent;
+            rb.hidden = false;
+            rb.textContent = '↺ Retake photo 1';
+          }
+          if (db) {
+            db._lebPrevHidden = db.hidden;
+            db._lebPrevText = db.textContent;
+            db.hidden = false;
+            db.textContent = '✓ Save Photo →';
+          }
+          if (cb) {
+            cb._lebPrevHidden = cb.hidden;
+            cb.hidden = true;
+          }
+          if (scRow) attachCornerResize(scRow, 'btn');
+        }
+
         updateLebLabels();
         syncGuestEditorPreview(true);
         if (typeof applyStageAspect === 'function') applyStageAspect();
@@ -40266,6 +41311,36 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (ra) ra.classList.remove('edit-preview');
         }
 
+        // Restore session controls (Retake / Done preview)
+        var sc = document.getElementById('sessionControls');
+        if (sc) {
+          sc.classList.remove('edit-preview');
+          var rb = document.getElementById('retakeBtn');
+          var db = document.getElementById('doneBtn');
+          var cb = document.getElementById('cancelSessionBtn');
+          if (rb) {
+            if (typeof rb._lebPrevText === 'string') rb.textContent = rb._lebPrevText;
+            if (typeof rb._lebPrevHidden === 'boolean') rb.hidden = rb._lebPrevHidden;
+            delete rb._lebPrevText;
+            delete rb._lebPrevHidden;
+          }
+          if (db) {
+            if (typeof db._lebPrevText === 'string') db.textContent = db._lebPrevText;
+            if (typeof db._lebPrevHidden === 'boolean') db.hidden = db._lebPrevHidden;
+            delete db._lebPrevText;
+            delete db._lebPrevHidden;
+          }
+          if (cb) {
+            if (typeof cb._lebPrevHidden === 'boolean') cb.hidden = cb._lebPrevHidden;
+            delete cb._lebPrevHidden;
+          }
+          var inActiveSession = document.body.classList.contains('in-session') || document.body.classList.contains('stage-review');
+          if (!inActiveSession) {
+            sc.hidden = typeof sc._lebPrevHidden === 'boolean' ? sc._lebPrevHidden : true;
+          }
+          delete sc._lebPrevHidden;
+        }
+
         // Remove sample frames if real session hasn't started
         var ft = document.getElementById('filmTrack');
         if (ft) {
@@ -40284,7 +41359,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       function setLebScale(which, value) {
         var min = which === 'btn' ? 0.6 : 0.7;
-        var max = which === 'cd' ? 2.5 : (which === 'film' ? 2.5 : 1.6);
+        var max = which === 'cd' ? 2.5 : (which === 'film' ? 2.5 : 2.0);
         var updated = Math.round(value * 100) / 100;
         if (updated < min) updated = min;
         if (updated > max) updated = max;
@@ -47738,7 +48813,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;';
             // A Canon SELPHY on Wi-Fi is always used with no Windows / Mac driver: the app sends the photo straight to it.
-            const selphyDirect = !!(p.ipp && /selphy/i.test(p.name || ''));
+            const selphyDirect = !!(p.ipp && isSelphyName(p.name));
             b.textContent = (p.installed || selphyDirect) ? 'Use this printer' : (p.ipp ? 'Add to this computer' : 'Add in system settings');
             b.addEventListener('click', async function () {
               b.disabled = true;
@@ -49866,6 +50941,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         let hint = 'Prints edge-to-edge without margins or scaling on supported photo printers.';
         try {
           if (wifiPrinter && wifiPrinter.escp2) hint = 'This printer requires standard page margins; borderless mode is not supported by this model.';
+          else if (wifiPrinter && isSelphyName(wifiPrinter.name)) hint = 'Canon SELPHY prints edge-to-edge borderless over Wi-Fi using zero-margin postcard mode. Also check Borders → Borderless on the printer’s own LCD screen.';
           else if (wifiPrinter && wifiPrinter.canon) hint = 'This Canon prints borderless on 4×6 in paper (it uses its 600 dpi mode, so the sheet takes a little longer). Other paper sizes print with a normal border.';
         } catch (e) { }
         try {
@@ -50462,7 +51538,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function gbCardRefresh() {
         var card = document.getElementById('gbSetupCard'); if (!card) return;
-        var want = (typeof extraOn === 'function' && extraOn('video') && window.MediaRecorder) ? '' : 'none';
+        var canRec = !!(window.MediaRecorder || (typeof hasNativeCamBridge === 'function' && hasNativeCamBridge()));
+        var want = (typeof extraOn === 'function' && extraOn('video') && canRec) ? '' : 'none';
         if (card.style.display !== want) card.style.display = want;
         if (want) return;                 // hidden: nothing to fill in (this runs often, so keep it cheap)
         var set = function (id, v) { var el = document.getElementById(id); if (el && el.value !== v && document.activeElement !== el) el.value = v; };
@@ -50470,8 +51547,20 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         set('gbEvent', gbPrefs.event); set('gbTitle', gbPrefs.title); set('gbThanks', gbPrefs.thanks);
         set('gbLook', gbPrefs.look);
         try { set('gbQuality', vgQuality()); } catch (e) { }          // (this device's own choice; not part of the saved setup)
+        var dBox = document.getElementById('gbDslrBox');
+        if (dBox) {
+          var showDslr = !!(DESKTOP && typeof PBX !== 'undefined' && PBX && typeof PBX.vgFinalize === 'function');
+          if (dBox.style.display !== (showDslr ? '' : 'none')) dBox.style.display = showDslr ? '' : 'none';
+          if (showDslr) {
+            try { set('gbDslrMode', vgDslrMode()); } catch (e) { }
+            var dm = document.getElementById('gbDslrMic');
+            try { if (dm) dm.checked = vgDslrUseLaptopMic(); } catch (e) { }
+          }
+        }
         var pk = document.getElementById('gbLookPick'); if (pk && pk.checked !== gbPrefs.pick) pk.checked = gbPrefs.pick;
         var mk = document.getElementById('gbMirror'); if (mk && mk.checked !== gbPrefs.mirror) mk.checked = gbPrefs.mirror;
+        var gws = document.getElementById('gbWelcomeShortcutToggle'); if (gws && gws.checked !== !!welcomeVgBtn) gws.checked = !!welcomeVgBtn;
+        try { if (typeof syncWelcomeShortcutsUI === 'function') syncWelcomeShortcutsUI(); } catch (e) { }
         // Looks need canvas filters (Chrome / Android / Edge); without them the options are not shown.
         var lb = document.getElementById('gbLookBox'), can = false;
         try { can = typeof vgCanFilter === 'function' && vgCanFilter(); } catch (e) { }     // (this can run before the guestbook code below has loaded)
@@ -51154,12 +52243,14 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // types the way other printers do, so "Printer default" meant plain paper at standard quality: banding lines across the photo and no
       // borderless (a client's Xiaomi Pad 5 over Wi-Fi printed that way while the Epson app printed the same photo sharp and borderless).
       // It gets fixed High / photo-paper choices instead, and the Android side sends them even though the printer does not list them.
+      function isSelphyName(s) { return /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bcp\s?\d{3,4}\b/i.test(String(s || '')); }
       function epsonLUsbIpp(p) { return !!(p && p.ipp && ((p.usb && p.vid === 1208 && EPSON_L_PIDS[p.pid] === 'L8050') || /(?:^|[^A-Za-z0-9])L8050(?![0-9])/i.test(p.name || ''))); }
       // A printer that can print borderless, as far as the app knows: an Epson it knows by model (the L8050, the L3200 / L1200 family, the
       // ESC/P-R L-series), or any IPP printer that itself lists a margin of 0 (p.bcap, read by the Android app). Picking one turns Borderless
       // on, and until the operator chooses otherwise it prints on glossy photo paper at the best quality it offers (High where listed).
       // Left out on purpose: the L1xx family (no borderless), the Canon G-series over USB (its High / borderless is the 600 dpi mode, not
-      // yet proven on a real printer), Canon SELPHY / DNP / Instax (dye-sub, fixed paper), receipt printers and the Android print screen.
+      // yet proven on a real printer), Canon SELPHY / DNP / Instax (dye-sub, fixed paper — Wi-Fi SELPHY auto-enables borderless in wifiSave
+      // and NetPrintBridge without requesting ink-tank quality/mediaType), receipt printers and the Android print screen.
       function printerBorderlessKnown(p) {
         if (!p || p.dialog || p.instax || p.escp2 || p.canon || p.selphy || p.dnp) return false;
         if (/selphy|\bdnp\b|instax/i.test(p.name || '')) return false;
@@ -51302,6 +52393,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         // Picking a printer that can print borderless turns Borderless on (it still can be switched off after): left off, an L8050 over
         // Wi-Fi printed with a white border all round. A printer known only from its own IPP list (p.bcap) does it for photo sizes only.
         if (p && (p.borderless || (printerBorderlessKnown(p) && (epsonLUsbIpp(p) || epsonLBorderlessModel(p) || epsonEscprBorderlessModel(p) || photoSheetSize())))) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } try { if (p.name && window._pfSeedBorderless) window._pfSeedBorderless(p.name); } catch (e) { } }
+        if (p && p.ipp && !p.selphy && /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bcp\s?\d{3,4}\b/i.test(p.name || '')) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } try { if (p.name && window._pfSeedBorderless) window._pfSeedBorderless(p.name); } catch (e) { } }
         try { printPrefsChanged(); } catch (e) { }
       }
       // An Instax Link printer as the tablet's printer for a paper size (it is not found by the Wi-Fi / USB scan).
@@ -53508,8 +54600,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         '.film div.pick{cursor:pointer;}' +
         '.film div.pick::after{content:"↺ Tap to retake";position:absolute;left:0;right:0;bottom:0;padding:.5vh .3vw;border-radius:0 0 6px 6px;background:rgba(20,16,22,.62);color:#fff;font:800 clamp(10px,.85vw,15px) Manrope,sans-serif;text-align:center;}' +
         '.film div.sel{outline:5px solid var(--red);outline-offset:3px;}.film div.sel::after{content:"✓ Will retake";background:var(--red);}' +
-        '.gb{display:flex;flex-direction:column;gap:calc(1.4vh * min(var(--ui-btn-scale,1),1.35));width:min(100%,calc(22vw * max(1,min(var(--ui-btn-scale,1),1.35))));min-width:0;opacity:var(--ui-btn-opacity,1);}' +
-        '.gbtn{min-height:calc(max(56px,7vh) * min(var(--ui-btn-scale,1),1.35));padding:calc(1vh * min(var(--ui-btn-scale,1),1.35)) calc(1.2vw * min(var(--ui-btn-scale,1),1.35));border-radius:99px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:800 calc(clamp(15px,1.3vw,26px) * min(var(--ui-btn-scale,1),1.35)) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
+        '.gb{display:flex;flex-direction:column;gap:calc(1.4vh * min(var(--ui-btn-scale,1),2));width:min(100%,calc(22vw * max(1,min(var(--ui-btn-scale,1),2))));min-width:0;opacity:var(--ui-btn-opacity,1);}' +
+        '.gbtn{min-height:calc(max(56px,7vh) * min(var(--ui-btn-scale,1),2));padding:calc(1vh * min(var(--ui-btn-scale,1),2)) calc(1.2vw * min(var(--ui-btn-scale,1),2));border-radius:99px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:800 calc(clamp(15px,1.3vw,26px) * min(var(--ui-btn-scale,1),2)) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;max-width:100%;}' +
         '.gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}' +
         '.guide{position:absolute;z-index:2;display:none;pointer-events:none;border:3px dashed rgba(255,255,255,.9);border-radius:8px;box-shadow:0 0 0 9999px rgba(10,8,12,.45);}.guide.on{display:block;}' +
         '.film div.f{border:2px solid var(--red);}' +
@@ -53548,8 +54640,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         'body.ps .film.no-shots{display:none !important;}' +
         'body.ps .film div{height:auto !important;width:min(calc(clamp(64px,9vmin,120px) * var(--ui-film-scale,1)), calc(((100vh - 140px) / var(--n,4) - 10px) * var(--box-aspect,.8)));aspect-ratio:var(--box-aspect,.8);border:2px solid rgba(255,255,255,.85);}' +
         'body.ps .film div:not(.f){display:none !important;}' +
-        'body.ps .gb{position:fixed;left:50%;bottom:max(18px,2.4vh);transform:translateX(-50%);z-index:45;display:flex;flex-direction:row;justify-content:center;gap:calc(12px * min(var(--ui-btn-scale,1),1.35));width:max-content;max-width:calc(100vw - 32px);flex-wrap:wrap;}' +
-        'body.ps .gbtn{background:rgba(0,0,0,.58);border:1.5px solid rgba(255,255,255,.32);color:#fff;padding:calc(12px * min(var(--ui-btn-scale,1),1.35)) calc(28px * min(var(--ui-btn-scale,1),1.35));min-height:calc(52px * min(var(--ui-btn-scale,1),1.35));font-size:calc(clamp(15px,1.3vw,24px) * min(var(--ui-btn-scale,1),1.35));white-space:nowrap;backdrop-filter:blur(8px);}' +
+        'body.ps .gb{position:fixed;left:50%;bottom:max(18px,2.4vh);transform:translateX(-50%);z-index:45;display:flex;flex-direction:row;justify-content:center;gap:calc(12px * min(var(--ui-btn-scale,1),2));width:max-content;max-width:calc(100vw - 32px);flex-wrap:wrap;}' +
+        'body.ps .gbtn{background:rgba(0,0,0,.58);border:1.5px solid rgba(255,255,255,.32);color:#fff;padding:calc(12px * min(var(--ui-btn-scale,1),2)) calc(28px * min(var(--ui-btn-scale,1),2));min-height:calc(52px * min(var(--ui-btn-scale,1),2));font-size:calc(clamp(15px,1.3vw,24px) * min(var(--ui-btn-scale,1),2));max-width:calc(100vw - 32px);white-space:normal;text-align:center;backdrop-filter:blur(8px);}' +
         'body.ps .gbtn.strong{background:rgba(201,61,39,.95);border-color:transparent;}' +
         'body.edit-preview .frame video#v{display:block !important;}' +
         'body.edit-preview .frame img.res,body.edit-preview .frame video.gv,body.edit-preview .gcta,body.edit-preview .gready,body.edit-preview .pk{display:none !important;}' +
@@ -54108,7 +55200,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
                 }
               }
             } else if (attractMode === 'camera') {
-              if (G.res.src !== welcomeDataUrl) G.res.src = welcomeDataUrl;
+              const camWelUrl = (typeof welcomeGuestDataUrl === 'string' && welcomeGuestDataUrl) ? welcomeGuestDataUrl : welcomeDataUrl;
+              if (G.res.src !== camWelUrl) G.res.src = camWelUrl;
               G.res.style.position = 'absolute';
               G.res.style.top = '0';
               G.res.style.left = '0';
@@ -54119,7 +55212,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               G.res.style.display = 'block';
               G.v.style.display = 'block';
             } else {
-              const targetUrl = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w'))) ? curSlide.url : welcomeDataUrl;
+              const welSrcUrl = (typeof welcomeGuestDataUrl === 'string' && welcomeGuestDataUrl) ? welcomeGuestDataUrl : welcomeDataUrl;
+              const targetUrl = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w')) && !(typeof shouldUseWelcomeIconDock === 'function' && shouldUseWelcomeIconDock(false))) ? curSlide.url : welSrcUrl;
               if (G.res.src !== targetUrl) G.res.src = targetUrl;
               G.res.style.position = '';
               G.res.style.top = '';
@@ -54312,6 +55406,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var welcomeStep1 = '';
       var welcomeStep2 = '';
       var welcomeStep3 = '';
+      // Custom placement & scale for the Welcome card and optional layout sample.
+      // x, y = normalized center (0..1) relative to canvas (null = auto-centered); scale = 0.45..1.5 (1 = default).
+      var welcomeCardX = null, welcomeCardY = null, welcomeCardScale = 1;
+      var welcomeSampleX = null, welcomeSampleY = null, welcomeSampleScale = 1;
+      var welcomeCardRect = null, welcomeSampleRect = null;
+      var _wpvSampleCache = null;
       // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
       // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
       // share of that height. null = the default place (c: where the photobooth4u logo sits;
@@ -57015,7 +58115,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (!best || score > best.score) {
               best = { score: score, time: performance.now() - t0, sig: frameSignature(tx, tiny, probe) };
               cx.save();
-              if (typeof mirrorPreview === 'function' && mirrorPreview()) { cx.translate(cv.width, 0); cx.scale(-1, 1); }
+              if (typeof mirrorOutput === 'function' && mirrorOutput()) { cx.translate(cv.width, 0); cx.scale(-1, 1); }
               try { cx.drawImage(camFrameSource(), 0, 0, cv.width, cv.height); } catch (e) { }
               cx.restore();
             }
@@ -57155,6 +58255,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var vgFab = document.getElementById('vgFab');
         if (vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
         try { gbCardRefresh(); } catch (e) { }
+        try { if (typeof syncWelcomeShortcutsUI === 'function') syncWelcomeShortcutsUI(); } catch (e) { }
+        try { if (typeof syncWelcomeIconDock === 'function') syncWelcomeIconDock(); } catch (e) { }
         var roveBridgeOn = !!(IS_ANDROID_APP && window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
         var roveBridgeFab = document.getElementById('roveBridgeFab');
         if (roveBridgeFab) roveBridgeFab.hidden = !roveBridgeOn || state === 'capturing';
@@ -64081,7 +65183,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!spinWebLinkUrl) return;
         try { navigator.clipboard.writeText(spinWebLinkUrl).then(function () { showToast('Link copied.', 2000); }); } catch (e) { }
       });
-      function openSpin() {
+      function openSpin(opts) {
         if (!extraOn('spin360')) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
         if (!spinDesktop()) {
@@ -64089,8 +65191,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           openSpinWebNotice();
           return;
         }
+        var isKiosk = !!(opts && opts.kiosk);
+        spinOverlay.classList.toggle('spin-kiosk', isKiosk);
+        spinOverlay._openedFromWelcome = !!(opts && (opts.fromWelcome || opts.kiosk));
+        var stEl = document.getElementById('spinHeadStatus');
+        if (stEl) {
+          if (isKiosk) {
+            if (spinOverlay._prevStatusTxt == null) spinOverlay._prevStatusTxt = stEl.textContent;
+            stEl.textContent = 'Record a 360 video · Scan the QR when ready';
+          } else if (spinOverlay._prevStatusTxt != null) {
+            stEl.textContent = spinOverlay._prevStatusTxt;
+            delete spinOverlay._prevStatusTxt;
+          }
+        }
         spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0';
-        spinRender(); spinSetupInfo().then(function () { spinConnectRefresh(false); spinFirstRunPrompt(); }); spinWebShow();
+        if (isKiosk && typeof spinOverlay._setStep === 'function') {
+          spinOverlay.classList.remove('spin-adv-on');
+          spinOverlay._setStep('rec');
+        }
+        spinRender(); spinSetupInfo().then(function () { spinConnectRefresh(false); if (!isKiosk) spinFirstRunPrompt(); }); spinWebShow();
         if (spinArmTimer) { clearInterval(spinArmTimer); spinArmTimer = null; }
         spinArmRefresh();
         spinArmTimer = setInterval(spinArmRefresh, 1200);
@@ -64121,35 +65240,83 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       if (swnBackdrop) swnBackdrop.addEventListener('click', closeSpinWebNotice);
       function closeSpin() {
         spinOverlay.hidden = true;
+        spinOverlay.classList.remove('spin-kiosk');
+        var stEl = document.getElementById('spinHeadStatus');
+        if (stEl && spinOverlay._prevStatusTxt != null) {
+          stEl.textContent = spinOverlay._prevStatusTxt;
+          delete spinOverlay._prevStatusTxt;
+        }
+        var fromWel = !!spinOverlay._openedFromWelcome;
+        spinOverlay._openedFromWelcome = false;
         if (spinArmTimer) { clearInterval(spinArmTimer); spinArmTimer = null; }
         if (typeof spinCapDeactivate === 'function') spinCapDeactivate();
         var v = document.getElementById('spinVideo');
         if (v) { try { v.pause(); } catch (e) { } }
         closeSpinModal();
+        if (fromWel && typeof refreshWelcome === 'function') { try { refreshWelcome(); } catch (e) { } }
       }
 
       // ---- Video guestbook (included extra "video"): a guest records a short message on the booth, then gets a QR for it ----
-      // Kiosk: the operator opens it and hands the device over. Up to 30 seconds, and a small video (about 10 MB at most),
-      // saved in the event folder like a photo (the online gallery shows it under Videos).
+      // Kiosk: the operator opens it and hands the device over. Saved in the event folder like a photo (gallery shows it under Guestbook).
       var VG_MAX_BYTES = 25 * 1024 * 1024;
+      function vgMaxBytes() { return LOCALSHARE ? 80 * 1024 * 1024 : VG_MAX_BYTES; }
+      var VG_DSLR_MODE_KEY = 'pb_vg_dslr_mode';
+      var VG_DSLR_MIC_KEY = 'pb_vg_dslr_mic';
+      function vgDslrMode() { try { return localStorage.getItem(VG_DSLR_MODE_KEY) === 'live' ? 'live' : 'hd'; } catch (e) { return 'hd'; } }
+      function vgDslrUseLaptopMic() { try { return localStorage.getItem(VG_DSLR_MIC_KEY) === '1'; } catch (e) { return false; } }
+      function vgUseDslrMovie() {
+        return !!(DESKTOP && !(vg && vg.dslrLiveFallback) && currentDeviceId === USB_CAM_ID && typeof usbIsHelper === 'function' && usbIsHelper() &&
+          usbCam && usbCam.active && ((typeof camIsCanon === 'function' && camIsCanon()) || (typeof camIsNikon === 'function' && camIsNikon())) &&
+          vgDslrMode() !== 'live' && typeof PBX !== 'undefined' && PBX && typeof PBX.vgFinalize === 'function');
+      }
       function vgMaxS() { return gbPrefs.length || 30; }           // seconds (Setup: 15 / 30 / 60)
       function vgIdleTitle() { return gbPrefs.title || 'Leave a video message'; }
       function vgIdleSub() { return 'Up to ' + vgMaxS() + ' seconds'; }
       var vgOverlay = document.getElementById('vgOverlay'), vgVideo = document.getElementById('vgVideo');
-      var vg = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, audio: null, blob: null, url: '', mime: '', qi: 0, nativeRecording: false, hasNativeMic: false };
+      var vg = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, audio: null, blob: null, url: '', mime: '', qi: 0, nativeRecording: false, hasNativeMic: false, dslrRecording: false, dslrMicRec: null, dslrMicChunks: [], dslrPoll: null };
       function vgAvailable() { return extraOn('video') && (!!window.MediaRecorder || (hasNativeCamBridge() && typeof window.__PBCam.startVideo === 'function')) && (driveReady() || LOCALSHARE); }
       function vgEl(id) { return document.getElementById(id); }
       function vgIsOpen() { return !!(vgOverlay && !vgOverlay.hidden); }
       function vgText(title, sub) { vgEl('vgTitle').textContent = title; vgEl('vgSub').textContent = sub || ''; }
+      function vgBadgeUpdate() {
+        var info = vgEl('vgInfo'); if (!info) return;
+        if (vgUseDslrMovie()) { info.textContent = 'DSLR · 1080p HD'; return; }
+        if (currentDeviceId === USB_CAM_ID && usbCam && usbCam.canvas && usbCam.canvas.width > 0) {
+          info.textContent = 'Live View · ' + usbCam.canvas.width + '×' + usbCam.canvas.height;
+          return;
+        }
+        var Q = VG_Q[vgQuality()];
+        if (vgUseNative()) {
+          var nw = (nativeCam && nativeCam.w) || 0, nh = (nativeCam && nativeCam.h) || 0;
+          var hi = Q ? (Q.h + 'p') : (Math.max(nw, nh) >= 1400 ? '1080p HD' : 'HD');
+          info.textContent = hi;
+          return;
+        }
+        var vw = (vgVideo && vgVideo.videoWidth) || 0, vh = (vgVideo && vgVideo.videoHeight) || 0;
+        if (vw > 0 && vh > 0) {
+          var p = Math.min(vw, vh);
+          info.textContent = p >= 1000 ? '1080p HD' : p >= 680 ? '720p HD' : (vw + '×' + vh);
+        } else {
+          info.textContent = Q ? (Q.h + 'p') : 'HD';
+        }
+      }
       function vgUi() {
         var st = vg.state, main = vgEl('vgMain'), second = vgEl('vgSecond');
         vgEl('vgQr').hidden = st !== 'done';
-        second.hidden = !(st === 'review' || st === 'failed');
-        main.disabled = st === 'counting' || st === 'saving';
+        second.hidden = !(st === 'review' || st === 'failed' || st === 'dslr-fallback');
+        main.disabled = st === 'counting' || st === 'saving' || st === 'processing';
         vgQUi();
-        try { vgLooksUi(); vgLookApply(); } catch (e) { }
-        main.textContent = st === 'idle' ? 'Record a message' : st === 'recording' ? 'Stop' : st === 'review' ? 'Save my message' : st === 'saving' ? 'Saving…' : st === 'failed' ? 'Try saving again' : st === 'done' ? 'Next guest' : 'Get ready…';
-        second.textContent = st === 'failed' ? 'Record again' : 'Retake';
+        try { vgLooksUi(); vgLookApply(); vgBadgeUpdate(); } catch (e) { }
+        main.textContent = st === 'idle' ? 'Record a message'
+          : st === 'recording' ? 'Stop'
+          : st === 'processing' ? 'Preparing HD…'
+          : st === 'dslr-fallback' ? 'Retry DSLR 1080p HD'
+          : st === 'review' ? 'Save my message'
+          : st === 'saving' ? 'Saving…'
+          : st === 'failed' ? 'Try saving again'
+          : st === 'done' ? 'Next guest'
+          : 'Get ready…';
+        second.textContent = st === 'dslr-fallback' ? 'Use Live View instead' : st === 'failed' ? 'Record again' : 'Retake';
       }
       // The question for this guest: shown before and while recording. Each guest gets the next one in turn.
       function vgQUi() {
@@ -64207,9 +65374,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { }
       }
       async function openVg() {
-        if (!vgAvailable()) return;
+        if (!vgAvailable()) {
+          if (extraOn('video') && !(driveReady() || LOCALSHARE)) {
+            showToast('Set an event folder in Setup → Share (or turn on Local Share) to use Video Guestbook.', 4000);
+          }
+          return;
+        }
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
-        vg.look = ''; vg.lookOpen = false; vg.busy = false; vgCamBefore = null; vg.nativeRecording = false; vg.hasNativeMic = false;
+        try { if (typeof stopPlaylistPlayback === 'function') stopPlaylistPlayback(); } catch (e) { }
+        vg.look = ''; vg.lookOpen = false; vg.busy = false; vgCamBefore = null; vg.nativeRecording = false; vg.hasNativeMic = false; vg.dslrRecording = false; vg.dslrLiveFallback = false;
         if (vgUseNative()) {
           nativeCam.vgHold = true;
           if (!nativeCam.active || !streamActive) {
@@ -64250,6 +65423,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       function closeVg() {
         clearTimeout(vg.timer); clearInterval(vg.tick);
+        if (vg.dslrPoll) { clearInterval(vg.dslrPoll); vg.dslrPoll = null; }
+        if (vg.dslrRecording) {
+          vg.dslrRecording = false;
+          if (vg.dslrMicRec) { try { vg.dslrMicRec.onstop = null; vg.dslrMicRec.stop(); } catch (e) { } vg.dslrMicRec = null; }
+          try { fetch(CAM_HELPER + '/camera/movie/stop?dest=guestbook', { method: 'POST', cache: 'no-store' }).catch(function () { }); } catch (e) { }
+          try { if (usbCam) usbCam.shooting = false; } catch (e) { }
+        }
+        vgFx.capTrack = null;
+        vgVideo.style.opacity = '';
         if (vgUseNative()) {
           if (vg.state === 'recording' && vg.nativeRecording) {
             vg.nativeRecording = false;
@@ -64271,6 +65453,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             syncNativeCamLayout();
           }
           try { if (typeof startBgLive === 'function') startBgLive(); } catch (e) { }
+          try { if (typeof refreshWelcome === 'function') refreshWelcome(); } catch (e) { }
           return;
         }
         if (vg.state === 'recording') { try { vg.rec.onstop = null; vg.rec.stop(); } catch (e) { } }
@@ -64285,11 +65468,150 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         else if (hasNativeCamBridge() && !nativeCamBypassed()) { initCamera(cameraSelect.value || null); }
         vgUntuneCamera();
         try { if (typeof startBgLive === 'function') startBgLive(); } catch (e) { }      // the live green-screen picture was paused while this screen was open
+        try { if (typeof refreshWelcome === 'function') refreshWelcome(); } catch (e) { }
       }
       function vgMime() {
-        var c = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+        // Prefer hardware-accelerated H.264 MP4/WebM first (near-zero CPU lag on phones/iOS/Desktop), then VP8 before heavy software VP9.
+        var c = [
+          'video/mp4;codecs=avc1.640028,mp4a.40.2',
+          'video/mp4;codecs=avc1.4D4028,mp4a.40.2',
+          'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+          'video/mp4',
+          'video/webm;codecs=h264,opus',
+          'video/webm;codecs=avc1,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm;codecs=vp9,opus',
+          'video/webm'
+        ];
         for (var i = 0; i < c.length; i++) { try { if (MediaRecorder.isTypeSupported(c[i])) return c[i]; } catch (e) { } }
         return '';
+      }
+      function vgAudioMime() {
+        var c = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
+        for (var i = 0; i < c.length; i++) { try { if (MediaRecorder.isTypeSupported(c[i])) return c[i]; } catch (e) { } }
+        return '';
+      }
+      async function vgStopDslr(by) {
+        if (!vg.dslrRecording) return;
+        vg.dslrRecording = false;
+        vg.stopBy = by || '';
+        clearTimeout(vg.timer); clearInterval(vg.tick);
+        if (vg.dslrPoll) { clearInterval(vg.dslrPoll); vg.dslrPoll = null; }
+        vg.busy = true; vg.state = 'processing'; vgBig('');
+        vgText('Transferring Full HD video…', 'Downloading from camera…');
+        vgUi();
+        // Finish optional laptop mic capture if enabled
+        var audioBytes = null, audioExt = '.webm';
+        if (vg.dslrMicRec) {
+          try {
+            var mRec = vg.dslrMicRec; vg.dslrMicRec = null;
+            if (mRec.state !== 'inactive') {
+              await new Promise(function (resolve) {
+                var done = false;
+                var fin = function () { if (!done) { done = true; resolve(); } };
+                mRec.onstop = fin;
+                setTimeout(fin, 1500);
+                try { mRec.stop(); } catch (e) { fin(); }
+              });
+            }
+            if (vg.dslrMicChunks && vg.dslrMicChunks.length) {
+              var aMime = mRec.mimeType || 'audio/webm';
+              audioExt = /mp4/i.test(aMime) ? '.m4a' : '.webm';
+              var ab = await (new Blob(vg.dslrMicChunks, { type: aMime })).arrayBuffer();
+              audioBytes = new Uint8Array(ab);
+            }
+          } catch (e) { audioBytes = null; }
+          vg.dslrMicChunks = [];
+        }
+        // Pause USB live view briefly while pulling the HD movie file over PTP so transfer runs at maximum speed.
+        try { if (usbCam) usbCam.shooting = true; } catch (e) { }
+        vg.dslrPoll = setInterval(function () {
+          fetch(CAM_HELPER + '/camera/movie/status', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (s) {
+            if (!s || vg.state !== 'processing') return;
+            if (s.total > 0 && s.written > 0) {
+              var pct = Math.min(99, Math.round((s.written / s.total) * 100));
+              vgText('Transferring Full HD video…', pct + '% downloaded from camera');
+            }
+          }).catch(function () { });
+        }, 400);
+        vg.chunks = []; vg.mime = 'video/mp4';
+        try {
+          var stopRes = await fetch(CAM_HELPER + '/camera/movie/stop?dest=guestbook', {
+            method: 'POST', cache: 'no-store',
+            signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(180000) : undefined
+          });
+          var j = await stopRes.json().catch(function () { return null; });
+          if (vg.dslrPoll) { clearInterval(vg.dslrPoll); vg.dslrPoll = null; }
+          try { if (usbCam) { usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); if (typeof usbViewfinderOn === 'function') Promise.resolve(usbViewfinderOn()).catch(function () { }); } } catch (e) { }
+          if (!j || !j.ok || !j.path) throw new Error((j && j.error) || 'Camera did not return a video file.');
+          vgText('Preparing Full HD 1080p video…', 'Optimizing for instant phone playback…');
+          var QD = VG_Q[vgQuality()];
+          var finRes = await PBX.vgFinalize({
+            moviePath: j.path,
+            audioBytes: audioBytes,
+            audioExt: audioExt,
+            mirror: !!(gbPrefs.mirror && vgMirror()),
+            maxWidth: QD ? QD.w : 1920,
+            bitrate: QD ? QD.br : 5000000
+          });
+          if (!finRes || !finRes.ok || !finRes.bytes) throw new Error((finRes && finRes.error) || 'Could not prepare HD video.');
+          vg.mime = 'video/mp4';
+          vg.chunks = [new Blob([finRes.bytes], { type: 'video/mp4' })];
+        } catch (e) {
+          if (vg.dslrPoll) { clearInterval(vg.dslrPoll); vg.dslrPoll = null; }
+          try { if (usbCam) { usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); } } catch (e2) { }
+          console.error('DSLR video stop/finalize failed:', e);
+          vg.busy = false; vg.state = 'idle';
+          vgText('Could not finish DSLR HD video', String((e && e.message) || e).slice(0, 140));
+          vgUi();
+          await vgLive();
+          return;
+        }
+        var secs = Math.round((Date.now() - vg.t0) / 1000);
+        vg.cut = !vg.stopBy && secs < vgMaxS() - 2; vg.cutSecs = secs;
+        vg.busy = false;
+        await vgReview();
+      }
+      async function vgRecordDslr() {
+        vg.busy = true; vgText('Starting DSLR Full HD…', 'Preparing camera…'); vgUi();
+        // Start optional laptop mic recording in parallel only when explicitly enabled
+        vg.dslrMicRec = null; vg.dslrMicChunks = [];
+        if (vgDslrUseLaptopMic() && vg.audio && vg.audio.getAudioTracks().length && window.MediaRecorder) {
+          try {
+            var am = vgAudioMime();
+            var mr = new MediaRecorder(new MediaStream(vg.audio.getAudioTracks().slice(0, 1)), am ? { mimeType: am, audioBitsPerSecond: 128000 } : { audioBitsPerSecond: 128000 });
+            mr.ondataavailable = function (ev) { if (ev.data && ev.data.size) vg.dslrMicChunks.push(ev.data); };
+            vg.dslrMicRec = mr;
+          } catch (e) { vg.dslrMicRec = null; }
+        }
+        var startOk = false, startErr = '';
+        try {
+          var r = await fetch(CAM_HELPER + '/camera/movie/start?dest=guestbook', {
+            method: 'POST', cache: 'no-store',
+            signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined
+          });
+          var j = await r.json().catch(function () { return null; });
+          if (r.ok && j && j.ok) startOk = true;
+          else startErr = (j && j.error) || ('Camera refused movie recording (' + r.status + ')');
+        } catch (e) {
+          startErr = String((e && e.message) || e);
+        }
+        vg.busy = false;
+        if (!startOk) {
+          vg.dslrMicRec = null; vg.dslrMicChunks = [];
+          vg.state = 'dslr-fallback';
+          vgText('Switch camera dial to Movie for 1080p HD', startErr || 'Turn the camera dial to Movie (video icon) with an SD card inserted, then tap Retry — or use Live View instead.');
+          vgUi();
+          return;
+        }
+        if (vg.dslrMicRec) { try { vg.dslrMicRec.start(500); } catch (e) { vg.dslrMicRec = null; } }
+        vg.chunks = []; vg.rec = null; vg.mime = 'video/mp4'; vg.state = 'recording';
+        vg.t0 = Date.now(); vg.stopBy = ''; vg.cut = false; vg.dslrRecording = true;
+        var leftD = vgMaxS(); vgBig('REC ' + leftD, true);
+        vgText('Recording Full HD 1080p…', vg.dslrMicRec ? 'Using laptop microphone · Tap Stop when done.' : 'Recording on camera · Tap Stop when done.');
+        vgUi();
+        vg.tick = setInterval(function () { leftD--; if (leftD >= 0) vgBig('REC ' + leftD, true); }, 1000);
+        vg.timer = setTimeout(function () { vgStopDslr('timer'); }, vgMaxS() * 1000);
       }
       async function vgCountdown() {
         vg.state = 'counting'; vgUi(); vgText('Get ready…', '');
@@ -64339,12 +65661,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         await vgReview();
         try { syncNativeCamLayout(); } catch (e) { }
       }
-      async function vgRecord() {
+      async function vgRecord(recOpts) {
+        var forceLive = !!(recOpts && recOpts.forceLive);
+        if (!forceLive && vgUseDslrMovie()) {
+          return vgRecordDslr();
+        }
         if (vgUseNative()) {
           if (!nativeCam.active) { vg.state = 'idle'; vgText('The camera has no picture yet', 'Wait a second and try again.'); vgUi(); return; }
-          var lowN = vgLowPower(), QN = VG_Q[vgQuality()], baseBrN = QN ? QN.br : ((lowN || IS_IOS_APP) ? 2200000 : 3000000);
-          var maxWN = QN ? QN.w : ((lowN || IS_IOS_APP) ? 1280 : 1920);
-          var bitrateN = vgMaxS() > 30 ? Math.round(baseBrN * 0.6) : baseBrN;
+          var lowN = vgLowPower(), QN = VG_Q[vgQuality()], baseBrN = QN ? QN.br : (lowN ? 3200000 : 4800000);
+          var maxWN = QN ? QN.w : (lowN ? 1280 : 1920);
+          var bitrateN = vgMaxS() > 30 ? Math.round(baseBrN * 0.65) : baseBrN;
           var mirSave = !!(gbPrefs.mirror && vgMirror());
           var curLkN = 'none'; try { curLkN = vgCurLook(); } catch (e) { }
           var fkN = curLkN === 'booth' ? (filterKey || 'none') : (curLkN || 'none');
@@ -64371,22 +65697,43 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var stream = currentStream || video.srcObject, vt = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
         if (!vt.length) { vg.state = 'idle'; vgText('The camera has no picture yet', 'Wait a second and try again.'); vgUi(); return; }
         var camTracks = vt.slice(0, 1);          // the camera itself: if it ends, the recording ends
-        // With a look on, the video is the filtered picture from the canvas (so the look is in the saved file), not the raw camera.
-        if (vgFx.on && vgFx.cv && vgFx.cv.width) { try { var cs = vgFx.cv.captureStream(30); if (cs.getVideoTracks().length) vt = cs.getVideoTracks(); } catch (e) { } }
+        // With a look or mirror on, record from the canvas. Prefer captureStream(0) + manual requestFrame() where supported so
+        // the encoder only receives real new camera frames (zero wasted duplicate copies = smoother HD with less heat/lag).
+        vgFx.capTrack = null;
+        if (vgFx.on && vgFx.cv) {
+          // Ensure canvas is sized to full camera HD resolution and holds a fresh frame before captureStream/MediaRecorder locks dimensions.
+          vgFx.last = 0;
+          try { vgFrame(performance.now()); } catch (e) { }
+        }
+        if (vgFx.on && vgFx.cv && vgFx.cv.width) {
+          try {
+            var canManual = typeof CanvasCaptureMediaStreamTrack !== 'undefined' && typeof CanvasCaptureMediaStreamTrack.prototype.requestFrame === 'function';
+            var cs = vgFx.cv.captureStream(canManual ? 0 : 30);
+            if (cs.getVideoTracks().length) {
+              vt = cs.getVideoTracks();
+              if (canManual && typeof vt[0].requestFrame === 'function') vgFx.capTrack = vt[0];
+            }
+          } catch (e) { }
+        }
         var tracks = vt.slice(0, 1).concat(vg.audio ? vg.audio.getAudioTracks() : []), mime = vgMime();
-        // Bitrate: lower on ordinary phones (the encoder is the part that lags), and lower for a 60 s message (size cap).
-        var low = vgLowPower(), QB = VG_Q[vgQuality()], baseBr = QB ? QB.br : (low ? 2200000 : 3000000);
-        var opts = { videoBitsPerSecond: vgMaxS() > 30 ? Math.round(baseBr * 0.6) : baseBr, audioBitsPerSecond: 64000 };      // 60 s uses a lower rate so it stays under the size cap if (mime) opts.mimeType = mime;
+        // Bitrate: crisp HD hardware H.264 on phones/iOS/Desktop; scaled down slightly for 60 s clips to keep file sizes friendly.
+        var low = vgLowPower(), QB = VG_Q[vgQuality()], baseBr = QB ? QB.br : (low ? 3200000 : 4800000);
+        var opts = { videoBitsPerSecond: vgMaxS() > 30 ? Math.round(baseBr * 0.65) : baseBr, audioBitsPerSecond: 128000 };
+        if (mime) opts.mimeType = mime;
         var rec;
         try { rec = new MediaRecorder(new MediaStream(tracks), opts); }
-        catch (e) { vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
+        catch (e) {
+          // Retry once without mimeType in case the platform rejects a specific H.264 profile level.
+          try { delete opts.mimeType; rec = new MediaRecorder(new MediaStream(tracks), opts); }
+          catch (e2) { vgFx.capTrack = null; vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
+        }
         vg.chunks = []; vg.rec = rec; vg.mime = rec.mimeType || mime || 'video/webm'; vg.state = 'recording';
         vg.t0 = Date.now(); vg.stopBy = ''; vg.cut = false;
         rec.ondataavailable = function (e) { if (e.data && e.data.size) vg.chunks.push(e.data); };
         // Stopped by something other than the guest's Stop or the time limit (the camera or microphone went away, the recorder failed):
         // keep what was recorded, and tell the guest it was cut short so they can retake instead of finding a short clip later.
         rec.onstop = function () {
-          clearTimeout(vg.timer); clearInterval(vg.tick); vgBig('');
+          clearTimeout(vg.timer); clearInterval(vg.tick); vgBig(''); vgFx.capTrack = null;
           var secs = Math.round((Date.now() - vg.t0) / 1000);
           vg.cut = !vg.stopBy && secs < vgMaxS() - 2; vg.cutSecs = secs;
           if (vg.cut) console.error('Video guestbook: recording stopped by itself after ' + secs + ' s of ' + vgMaxS());
@@ -64395,14 +65742,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         rec.onerror = function () { vg.stopBy = ''; try { if (rec.state !== 'inactive') rec.stop(); } catch (e) { } };
         tracks.concat(camTracks).forEach(function (t) { t.addEventListener('ended', function () { try { if (vg.rec === rec && rec.state !== 'inactive') rec.stop(); } catch (e) { } }); });
         rec.start(500);
+        if (vgFx.capTrack) { try { vgFx.capTrack.requestFrame(); } catch (e) { } }
         var left = vgMaxS(); vgBig('REC ' + left, true); vgText('Recording…', vg.audio ? 'Tap Stop when you are done.' : 'No microphone: this message will have no sound.'); vgUi();
         vg.tick = setInterval(function () { left--; if (left >= 0) vgBig('REC ' + left, true); }, 1000);
         vg.timer = setTimeout(function () { vg.stopBy = 'timer'; try { rec.stop(); } catch (e) { } }, vgMaxS() * 1000);
       }
       async function vgReview() {
+        vgVideo.style.opacity = '';
         var blob = new Blob(vg.chunks, { type: String(vg.mime).split(';')[0] }); vg.chunks = [];      // "video/mp4" (the upload accepts only the plain type)
         if (!blob.size) { vg.state = 'idle'; vgText('Nothing was recorded', 'Try again.'); vgUi(); await vgLive(); return; }
-        if (blob.size > VG_MAX_BYTES) { vg.state = 'idle'; vgText('That message is too big', 'Please record a shorter one.'); vgUi(); await vgLive(); return; }
+        if (blob.size > vgMaxBytes()) { vg.state = 'idle'; vgText('That message is too big', 'Please record a shorter one.'); vgUi(); await vgLive(); return; }
         vg.blob = blob; vg.url = URL.createObjectURL(blob); vg.state = 'review';
         try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
         vgVideo.srcObject = null; vgVideo.style.transform = ''; vgVideo.src = vg.url; vgVideo.muted = false; vgVideo.controls = true; vgVideo.loop = true;
@@ -64427,17 +65776,24 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
       async function vgMainClick() {
         if (vg.busy) return;
-        if (vg.state === 'idle') return vgCountdown();
+        if (vg.state === 'idle' || vg.state === 'dslr-fallback') { vg.dslrLiveFallback = false; return vgCountdown(); }
         if (vg.state === 'recording') {
+          if (vg.dslrRecording) return vgStopDslr('user');
           if (vg.nativeRecording) return vgStopNative('user');
           vg.stopBy = 'user'; try { vg.rec.stop(); } catch (e) { } return;
         }
         if (vg.state === 'review' || vg.state === 'failed') return vgSave();
-        if (vg.state === 'done') { vgClearBlob(); vg.qi++; vg.look = ''; vg.lookOpen = false; vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi(); }
+        if (vg.state === 'done') { vgClearBlob(); vg.qi++; vg.look = ''; vg.lookOpen = false; vg.dslrLiveFallback = false; vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi(); }
       }
       async function vgRetake() {
+        if (vg.state === 'dslr-fallback') {
+          vg.dslrLiveFallback = true; vg.state = 'idle'; vgUi();
+          if (vgFx.on && vgFx.cv) { vgFx.last = 0; try { vgFrame(performance.now()); } catch (e) { } }
+          await new Promise(function (r) { setTimeout(r, 80); });
+          return vgRecord({ forceLive: true });
+        }
         if (vg.state !== 'review' && vg.state !== 'failed') return;
-        vgClearBlob(); vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi();
+        vgClearBlob(); vg.dslrLiveFallback = false; vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi();
       }
       // ---- Camera care for the guestbook screen ----
       var vgCamBefore = null;      // the camera the booth was set to, if Flip camera changed it for the guestbook
@@ -64463,8 +65819,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!ok) { try { await initCamera(cameraSelect.value || currentDeviceId || null); } catch (e) { } }
         return streamActive;
       }
-      // A message is recorded at 720p / 30 fps at most: a 1080p+ camera picture (or a "Max" setting) makes an ordinary phone
-      // stutter while it records. The booth's own camera setting is put back when the guestbook closes.
+      // Tune camera stream to crisp HD at 30 fps for Video Guestbook: raises sub-HD photo previews up to HD (720p/1080p)
+      // while capping 4K/60fps streams down to 1080p/30fps so phones never stutter. Restored on closeVg().
       var vgCamSaved = null;
       async function vgTuneCamera() {
         vgCamSaved = null;
@@ -64472,10 +65828,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var st = currentStream || video.srcObject, t = st && st.getVideoTracks && st.getVideoTracks()[0];
         if (!t || !t.getSettings || !t.applyConstraints) return;
         var s = t.getSettings();
-        // Ordinary phones and tablets: 720p. Laptops and other strong devices keep up to 1080p. Anything bigger (a "Max" / 4K setting) comes down.
         var QQ = VG_Q[vgQuality()];
         var tw = QQ ? QQ.w : (vgLowPower() ? 1280 : 1920), th = QQ ? QQ.h : (vgLowPower() ? 720 : 1080);
-        var differs = QQ ? (Math.abs(s.width - tw) > 20 || Math.abs(s.height - th) > 20) : (s.width > tw + 20 || s.height > th + 20);      // a chosen quality also raises the picture; Auto only lowers it
+        var curLong = Math.max(s.width || 0, s.height || 0);
+        var tooSmall = !QQ && curLong > 0 && curLong < Math.min(1280, tw) - 20;
+        var differs = QQ ? (Math.abs(s.width - tw) > 20 || Math.abs(s.height - th) > 20) : (s.width > tw + 20 || s.height > th + 20 || tooSmall);
         if (!(differs || s.frameRate > 31)) return;
         vgCamSaved = { width: { ideal: s.width }, height: { ideal: s.height }, frameRate: { ideal: s.frameRate || 30 } };
         try { await t.applyConstraints({ width: { ideal: tw }, height: { ideal: th }, frameRate: { ideal: 30, max: 30 } }); }
@@ -64567,16 +65924,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       // auto = by device (720p on ordinary phones, up to 1080p on strong devices, and a look steps down by itself if slow).
       // Otherwise the camera size w x h, the look's picture size (cap, px), and the video bitrate (30 s or less; 60 s uses 60 % of it).
       var VG_Q_KEY = 'pb_vg_quality';
-      var VG_Q = { smooth: { w: 854, h: 480, cap: 640, br: 1200000 }, sd: { w: 1280, h: 720, cap: 960, br: 2200000 }, hd: { w: 1920, h: 1080, cap: 1280, br: 3500000 } };
+      var VG_Q = { smooth: { w: 854, h: 480, cap: 854, br: 1500000 }, sd: { w: 1280, h: 720, cap: 1280, br: 3200000 }, hd: { w: 1920, h: 1080, cap: 1920, br: 6000000 } };
       function vgQuality() { try { var q = localStorage.getItem(VG_Q_KEY); return VG_Q[q] ? q : 'auto'; } catch (e) { return 'auto'; } }
-      var vgFx = { on: false, raf: 0, vf: 0, last: 0, def: null, cv: null, ctx: null, small: null, lines: null, can: undefined, cap: 0, ms: 0, n: 0, forceOff: false };
-      // A phone or tablet that is not a powerful one (most Androids): smaller picture, lower bitrate, fewer frames.
+      var vgFx = { on: false, raf: 0, vf: 0, last: 0, def: null, cv: null, ctx: null, small: null, lines: null, can: undefined, cap: 0, ms: 0, n: 0, warm: 0, forceOff: false, capTrack: null };
+      // Only genuinely resource-constrained devices (<= 4 CPU cores or <= 3 GB RAM) use 720p Auto; modern phones, iOS devices and laptops record 1080p HD.
       function vgLowPower() {
         try {
-          if (typeof IS_ANDROID_APP !== 'undefined' && IS_ANDROID_APP) return true;
-          if (/Android/i.test(navigator.userAgent || '')) return true;
+          if (/iPhone|iPad/i.test(navigator.userAgent || '')) return false;
+          if (navigator.deviceMemory && navigator.deviceMemory <= 3) return true;
           if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) return true;
-          if (navigator.deviceMemory && navigator.deviceMemory <= 4) return true;
         } catch (e) { }
         return false;
       }
@@ -64654,30 +66010,41 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var t0 = performance.now();
           var v = vgVideo, d = vgFx.def, cv = vgFx.cv, w0 = v.videoWidth, h0 = v.videoHeight;
           if (!d || !w0 || !h0 || v.readyState < 2) return;
-          if (!vgFx.ctx) vgFx.ctx = cv.getContext('2d');
-          // Picture size for the look: a smaller one on ordinary phones, and smaller still if the phone is found to be slow.
+          if (!vgFx.ctx) {
+            try { vgFx.ctx = cv.getContext('2d', { alpha: false, desynchronized: true }); }
+            catch (e) { vgFx.ctx = cv.getContext('2d'); }
+          }
+          // Auto starts at 1080p HD on strong devices / iOS / flagship phones, and 720p HD on budget devices.
           var Q = VG_Q[vgQuality()];
-          var cap = Q ? Q.cap : (vgFx.cap || 960);          // Auto: starts at 960 px and steps down by itself only if this device is found to be slow (below)
-          var k = Math.min(1, cap / Math.max(w0, h0)), w = Math.round(w0 * k), h = Math.round(h0 * k);
+          var autoStartCap = vgLowPower() ? 1280 : 1920;
+          var cap = Q ? Q.cap : (vgFx.cap || autoStartCap);
+          var k = Math.min(1, cap / Math.max(w0, h0));
+          var w = Math.max(2, Math.round((w0 * k) / 2) * 2), h = Math.max(2, Math.round((h0 * k) / 2) * 2);
           if ((cv.width !== w || cv.height !== h) && vg.state !== 'recording') { cv.width = w; cv.height = h; }   // never resize while recording
           w = cv.width; h = cv.height;
           var x = vgFx.ctx;
-          x.filter = d.css || 'none';
+          // Only touch x.filter when a CSS filter is actually active; leaving it untouched preserves zero-copy GPU texture blits for Natural+mirror.
+          var hasCss = !!(d.css && d.css !== 'none');
+          if (hasCss) x.filter = d.css;
           if (vgFx.flip) { x.save(); x.translate(w, 0); x.scale(-1, 1); x.drawImage(v, 0, 0, w, h); x.restore(); } else x.drawImage(v, 0, 0, w, h);
-          x.filter = 'none';
+          if (hasCss) x.filter = 'none';
           if (d.lutKey && typeof customLutData === 'function') {
             var dLut = customLutData(d.lutKey), _clVg = customLutById(d.lutKey);
             if (dLut && typeof lutApplyToCanvasWebgl === 'function') {
               lutApplyToCanvasWebgl(cv, dLut, d.lutKey + '|' + (_clVg ? _clVg.assetId : '') + '|' + dLut.size, customLutStrength(d.lutKey), false);
             }
           }
-          (d.fx || []).forEach(function (t) { vgLayer(x, w, h, t); });
-          // Is the phone keeping up? Averaged over ~20 pictures, before recording only (never changed while recording).
+          if (d.fx && d.fx.length) d.fx.forEach(function (t) { vgLayer(x, w, h, t); });
+          if (vgFx.capTrack && vg.state === 'recording') { try { vgFx.capTrack.requestFrame(); } catch (e) { } }
+          // Skip the first 6 warm-up frames before measuring frame cost so GPU shader/texture startup doesn't falsely downscale HD.
+          if ((vgFx.warm || 0) < 6) { vgFx.warm = (vgFx.warm || 0) + 1; return; }
           vgFx.ms = vgFx.ms ? vgFx.ms * 0.9 + (performance.now() - t0) * 0.1 : (performance.now() - t0); vgFx.n++;
-          if (vgFx.n >= 20 && vg.state !== 'recording' && vgFx.ms > 22 && !Q) {      // only on Auto: a quality chosen in Setup is kept
+          var floorCap = vgLowPower() ? 854 : 1280;
+          if (vgFx.n >= 24 && vg.state !== 'recording' && vgFx.ms > 28 && !Q) {      // only on Auto when missing 30 fps
             vgFx.n = 0; vgFx.ms = 0;
-            if ((vgFx.cap || 960) > 520) vgFx.cap = Math.max(520, Math.round((vgFx.cap || 960) * 0.8));
-            else if (vgLookHas(d)) { vgFx.forceOff = true; showToast('Look switched off so the video stays smooth on this device.', 4000); setTimeout(function () { try { vgLooksUi(); vgLookApply(); } catch (e) { } }, 0); }
+            var curCap = vgFx.cap || autoStartCap;
+            if (curCap > floorCap) vgFx.cap = Math.max(floorCap, Math.round(curCap * 0.8));
+            else if (vgLookHas(d)) { vgFx.forceOff = true; showToast('Look switched off so HD video stays smooth on this device.', 4000); setTimeout(function () { try { vgLooksUi(); vgLookApply(); } catch (e) { } }, 0); }
           }
         } catch (e) { }
       }
@@ -64688,19 +66055,22 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           vgUnsched();
           vgFx.on = false;
           cv.hidden = true;
+          vgVideo.style.opacity = '';
           try { if (typeof syncNativeCamLayout === 'function') syncNativeCamLayout(); } catch (e) { }
           return;
         }
         var d = vgCanFilter() && !vgFx.forceOff ? vgLookDef(vgCurLook()) : null;
-        var live = !vgOverlay.hidden && (vg.state === 'idle' || vg.state === 'counting' || vg.state === 'recording') && !!vgVideo.srcObject;
-        // The picture goes through the canvas when there is a look, or when the video must be saved mirrored (the camera itself is never mirrored).
-        var flip = !!(gbPrefs.mirror && vgCanFilter() && vgMirror());
+        var live = !vgOverlay.hidden && (vg.state === 'idle' || vg.state === 'counting' || vg.state === 'recording' || vg.state === 'dslr-fallback') && !!vgVideo.srcObject;
+        // When using native DSLR 1080p movie mode, mirror is applied in FFmpeg — skip the 2D canvas loop unless a live visual look is active!
+        var dslrNative = vgUseDslrMovie();
+        var flip = !!(!dslrNative && gbPrefs.mirror && vgCanFilter() && vgMirror());
         var on = !!(live && (vgLookHas(d) || flip));
         if (vg.state === 'recording' && vgFx.on !== on) return;      // never switch the picture while recording
         vgFx.def = on ? (d || {}) : null; vgFx.on = on; vgFx.flip = flip;
         cv.hidden = !on;
+        vgVideo.style.opacity = on ? '0.001' : '';   // keep video decoding without double-compositing underneath canvas
         cv.style.transform = on && vgMirror() && !flip ? 'scaleX(-1)' : '';      // flipped in the picture itself, or only on screen
-        if (on && !vgFx.raf && !vgFx.vf) vgSched();
+        if (on && !vgFx.raf && !vgFx.vf) { vgFx.warm = 0; vgFx.last = 0; vgSched(); }
         if (!on) vgUnsched();
       }
       // The row of looks shown before recording, and the Flip camera button.
@@ -64752,8 +66122,16 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       vgEl('gbLength').addEventListener('change', function () { gbPrefs.length = Number(this.value); gbChanged(); });
       vgEl('gbLook').addEventListener('change', function () { gbPrefs.look = this.value; gbChanged(); });
       vgEl('gbQuality').addEventListener('change', function () { try { localStorage.setItem(VG_Q_KEY, this.value); } catch (e) { } showToast('Video quality: ' + this.options[this.selectedIndex].textContent + '. Used the next time the guestbook opens.', 3000); });
+      if (vgEl('gbDslrMode')) vgEl('gbDslrMode').addEventListener('change', function () { try { localStorage.setItem(VG_DSLR_MODE_KEY, this.value); } catch (e) { } showToast('DSLR video mode: ' + this.options[this.selectedIndex].textContent + '.', 3000); });
+      if (vgEl('gbDslrMic')) vgEl('gbDslrMic').addEventListener('change', function () { try { localStorage.setItem(VG_DSLR_MIC_KEY, this.checked ? '1' : '0'); } catch (e) { } });
       vgEl('gbLookPick').addEventListener('change', function () { gbPrefs.pick = this.checked; gbChanged(); });
       vgEl('gbMirror').addEventListener('change', function () { gbPrefs.mirror = this.checked; gbChanged(); });
+      if (vgEl('gbWelcomeShortcutToggle')) vgEl('gbWelcomeShortcutToggle').addEventListener('change', function () {
+        welcomeVgBtn = this.checked;
+        if (typeof setWelcomeShortcutsUI === 'function') setWelcomeShortcutsUI({ vg: welcomeVgBtn });
+        if (typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+      });
       [['gbEvent', 'event'], ['gbTitle', 'title'], ['gbThanks', 'thanks']].forEach(function (k) {
         vgEl(k[0]).addEventListener('input', function () { gbPrefs[k[1]] = this.value.replace(/[<>]/g, ''); gbChanged(); });
       });
@@ -66297,7 +67675,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var c = shotCanvases[0]; if (!c) throw new Error('The camera did not give a photo.');
             var src = c._raw || c, out = document.createElement('canvas'); out.width = src.width; out.height = src.height;
             var x = out.getContext('2d');
-            if (mirrorPreview()) { x.translate(out.width, 0); x.scale(-1, 1); }       // captureShot mirrors like the live view; an ID photo should not be
+            if (mirrorOutput()) { x.translate(out.width, 0); x.scale(-1, 1); }       // only un-flip if captureShot mirrored the output; an ID photo must never be mirrored
             x.drawImage(src, 0, 0);
             return out;
           } finally { shotCanvases[0] = keep; }
@@ -68606,6 +69984,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (oSelEl) oSelEl.addEventListener('change', syncQuickOrient);
 
         var saved = false; try { saved = localStorage.getItem('spinAdv') === '1'; } catch (e) { }
+        ov._setStep = setStep;
         syncQuickOrient();
         setAdv(saved); setStep(cur);
       })();
@@ -71838,6 +73217,50 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         } catch (e) { console.error('afterPreview', e); }
       }
 
+      // Computes clamped position & uniform scale for a Welcome card or sample print box.
+      function computeWelcomeBoxTransform(baseCenterX, baseCenterY, baseW, baseH, W, H, customX, customY, customScale) {
+        var rawScale = Number(customScale);
+        var scale = (isFinite(rawScale) && rawScale > 0) ? Math.max(0.45, Math.min(1.5, rawScale)) : 1;
+        var hasCustomPos = customX != null && isFinite(Number(customX)) && customY != null && isFinite(Number(customY));
+        var hasCustomScale = Math.abs(scale - 1) > 0.002;
+        if (!hasCustomPos && !hasCustomScale) {
+          return {
+            centerX: baseCenterX,
+            centerY: baseCenterY,
+            x: baseCenterX - baseW / 2,
+            y: baseCenterY - baseH / 2,
+            w: baseW,
+            h: baseH,
+            scale: 1,
+            custom: false
+          };
+        }
+        var maxFit = Math.min((W * 0.96) / Math.max(1, baseW), (H * 0.94) / Math.max(1, baseH));
+        var effScale = Math.min(scale, Math.max(0.45, maxFit));
+        var finalW = baseW * effScale;
+        var finalH = baseH * effScale;
+        var marginX = Math.max(10, W * 0.02);
+        var marginY = Math.max(10, H * 0.02);
+        var minCx = finalW / 2 + marginX;
+        var maxCx = W - finalW / 2 - marginX;
+        var minCy = finalH / 2 + marginY;
+        var maxCy = H - finalH / 2 - marginY;
+        var rawCx = hasCustomPos ? Number(customX) * W : baseCenterX;
+        var rawCy = hasCustomPos ? Number(customY) * H : baseCenterY;
+        var centerX = minCx <= maxCx ? Math.max(minCx, Math.min(maxCx, rawCx)) : W / 2;
+        var centerY = minCy <= maxCy ? Math.max(minCy, Math.min(maxCy, rawCy)) : H / 2;
+        return {
+          centerX: centerX,
+          centerY: centerY,
+          x: centerX - finalW / 2,
+          y: centerY - finalH / 2,
+          w: finalW,
+          h: finalH,
+          scale: effScale,
+          custom: true
+        };
+      }
+
       // Welcome screen between guests: the event's own background, a sample print
       // of their layout, and the event name with "Tap to start". Drawn at the
       // camera's shape so it fills the live view exactly.
@@ -71846,6 +73269,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var c = null;
         try {
           var previewOnly = !!(opts && opts.previewOnly);
+          var fastDrag = !!(opts && opts.fastDrag);
           var hasVp = !!(opts && Number(opts.vw) > 0 && Number(opts.vh) > 0);
           var vpW = hasVp ? Number(opts.vw) : window.innerWidth;
           var vpH = hasVp ? Number(opts.vh) : window.innerHeight;
@@ -71861,7 +73285,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var W = isPort ? Math.round(H * portAspect) : Math.round(H * wa);
           var c = document.createElement('canvas'); c.width = W; c.height = H;
           var ctx = c.getContext('2d');
-          if (!previewOnly) syncWelcomeFitUI();
+          if (!previewOnly && !fastDrag) syncWelcomeFitUI();
           var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
           var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
           var localCta = null, localBaseUrl = '', localLogoRect = null, localGeo = { W: W, H: H, mid: 0.5 }, outWa = Number((W / H).toFixed(4));
@@ -71891,11 +73315,13 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               welcomeCta = localCta;
               welcomeGeo = localGeo;
               welcomeBaseUrl = ''; welcomeLogoRect = null;
+              welcomeCardRect = null; welcomeSampleRect = null;
               placeWelcomePulse();
               welcomeDataUrl = camUrl;
               welcomeImg.src = welcomeDataUrl;
               var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
               try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+              try { if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay(); } catch (e) { }
               renderResultBg();
               guestRender();
             } else {
@@ -71956,6 +73382,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               welcomeGeo = localGeo;
               welcomeBaseUrl = localBaseUrl;
               welcomeLogoRect = localLogoRect;
+              welcomeCardRect = null; welcomeSampleRect = null;
               placeWelcomePulse();
               welcomeDataUrl = posterUrl;
               syncWelcomeFitUI();
@@ -71964,6 +73391,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
               var prev2 = document.getElementById('welcomePreview');
               if (prev2) prev2.src = welcomeDataUrl;
               try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+              try { if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay(); } catch (e) { }
               renderResultBg();
               guestRender();
             } else {
@@ -71982,20 +73410,29 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var showSample = welcomeSampleOn !== false;
           var sample = null;
           if (showSample) {
-            sample = document.createElement('canvas');
-            var sLayKey = welcomeSampleLayout || 'strip';
-            var tLayKey = sLayKey === 'active' ? currentLayout : (LAYOUT_DEFS[sLayKey] ? sLayKey : 'strip');
-            var tShots = (typeof shotsNeeded === 'function' && shotsNeeded(tLayKey)) || (LAYOUT_DEFS[tLayKey] ? LAYOUT_DEFS[tLayKey].shots : 3);
-            try { composeCanvas(tLayKey, sample, buildPlaceholderShots(300, tShots)); } catch (e) { sample = null; }
-            // A frame whose strips all repeat the same photos: show one strip, not the whole sheet of copies.
-            try {
-              var cf = sample && tLayKey === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
-              if (cr) {
-                var sc = document.createElement('canvas'); sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
-                sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
-                sample = sc;
+            if (fastDrag && _wpvSampleCache && _wpvSampleCache.width > 0) {
+              sample = _wpvSampleCache;
+            } else {
+              sample = document.createElement('canvas');
+              var sLayKey = welcomeSampleLayout || 'strip';
+              var tLayKey = sLayKey === 'active' ? currentLayout : (LAYOUT_DEFS[sLayKey] ? sLayKey : 'strip');
+              var tShots = (typeof shotsNeeded === 'function' && shotsNeeded(tLayKey)) || (LAYOUT_DEFS[tLayKey] ? LAYOUT_DEFS[tLayKey].shots : 3);
+              try { composeCanvas(tLayKey, sample, buildPlaceholderShots(300, tShots)); } catch (e) { sample = null; }
+              // A frame whose strips all repeat the same photos: show one strip, not the whole sheet of copies.
+              try {
+                var cf = sample && tLayKey === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
+                if (cr) {
+                  var sc = document.createElement('canvas'); sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
+                  sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
+                  pbReleaseCanvas(sample);
+                  sample = sc;
+                }
+              } catch (e) { }
+              if (!previewOnly && sample && sample.width > 0) {
+                if (_wpvSampleCache && _wpvSampleCache !== sample) pbReleaseCanvas(_wpvSampleCache);
+                _wpvSampleCache = sample;
               }
-            } catch (e) { }
+            }
           }
 
           // Card with the event name and how it works
@@ -72126,26 +73563,38 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           var lfPre = lAutoPre ? brandFit(wl.naturalWidth / wl.naturalHeight, lbhPre, Math.min(lbhPre * BRAND_MAXR, maxCardWPre - 80)) : null;
           var slotForLogo = lAutoPre ? Math.max(116, Math.round(lfPre.h + 24)) : (wl ? 130 : 0);
           var box = cardBox(slotForLogo);
+          var cardTf = computeWelcomeBoxTransform(box.cx + box.cw / 2, box.cy + box.ch / 2, box.cw, box.ch, W, H, welcomeCardX, welcomeCardY, welcomeCardScale);
           if (wl && wb.x != null) {
             var lx0 = wb.x * W, ly0 = wb.y * H;
-            if (!(lx0 >= box.cx && lx0 <= box.cx + box.cw && ly0 >= box.cy && ly0 <= box.cy + box.ch)) box = cardBox(0);
+            if (!(lx0 >= cardTf.x && lx0 <= cardTf.x + cardTf.w && ly0 >= cardTf.y && ly0 <= cardTf.y + cardTf.h)) {
+              box = cardBox(0);
+              cardTf = computeWelcomeBoxTransform(box.cx + box.cw / 2, box.cy + box.ch / 2, box.cw, box.ch, W, H, welcomeCardX, welcomeCardY, welcomeCardScale);
+            }
           }
           var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy;
           var pw = box.pw, ph = box.ph, sampleX = box.sampleX, sampleY = box.sampleY;
+          var sampleTf = (showSample && sample && sample.width && pw > 0 && ph > 0)
+            ? computeWelcomeBoxTransform(sampleX, sampleY, pw, ph, W, H, welcomeSampleX, welcomeSampleY, welcomeSampleScale)
+            : null;
 
-          // Draw sample print of layout chosen (if enabled, centered horizontally, fully visible)
-          if (showSample && sample && sample.width && pw > 0 && ph > 0) {
+          // Draw sample print of layout chosen (if enabled, movable & resizable)
+          if (sampleTf) {
             ctx.save();
-            ctx.translate(sampleX, sampleY);
+            ctx.translate(sampleTf.centerX, sampleTf.centerY);
             ctx.rotate((land ? -3 : 0) * Math.PI / 180);
             ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 46; ctx.shadowOffsetY = 16;
-            ctx.fillStyle = '#fff'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+            ctx.fillStyle = '#fff'; ctx.fillRect(-sampleTf.w / 2, -sampleTf.h / 2, sampleTf.w, sampleTf.h);
             ctx.shadowColor = 'transparent';
-            ctx.drawImage(sample, -pw / 2, -ph / 2, pw, ph);
+            ctx.drawImage(sample, -sampleTf.w / 2, -sampleTf.h / 2, sampleTf.w, sampleTf.h);
             ctx.restore();
           }
 
-          // Draw branded details card (trendy aesthetic styling with soft shadow and subtle border)
+          // Draw branded details card inside dynamic position & scale transform
+          var baseCardMidX = cx + cw / 2, baseCardMidY = cy + ch / 2;
+          ctx.save();
+          ctx.translate(cardTf.centerX, cardTf.centerY);
+          ctx.scale(cardTf.scale, cardTf.scale);
+          ctx.translate(-baseCardMidX, -baseCardMidY);
           var cardRadius = Number(welcomeCardRadius) || 32;
           if (welcomeDecoStyle === 'pop-retro') {
             ctx.save();
@@ -72255,32 +73704,48 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 28, bw - 40, 16);
             ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
             ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
-            localCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+            var ctaX = cardTf.centerX + (bx - baseCardMidX) * cardTf.scale;
+            var ctaY = cardTf.centerY + (by - baseCardMidY) * cardTf.scale;
+            localCta = { l: ctaX / W * 100, t: ctaY / H * 100, w: (bw * cardTf.scale) / W * 100, h: (bh * cardTf.scale) / H * 100 };
           }
-          localGeo = { W: W, H: H, mid: mid / W };
+          ctx.restore();
+          localGeo = { W: W, H: H, mid: cardTf.centerX / W };
           if (wl) {
-            if (!previewOnly) localBaseUrl = c.toDataURL('image/jpeg', 0.8);   // the preview in Setup drags the logo over this
+            if (!previewOnly && !fastDrag) localBaseUrl = c.toDataURL('image/jpeg', 0.8);   // the preview in Setup drags the logo over this
             var lAuto = wb.x == null, lbh = (wb.s || BRAND_DEF_S.w) * H, lasp = wl.naturalWidth / wl.naturalHeight;
             var lf = brandFit(lasp, lbh, lAuto ? Math.min(lbh * BRAND_MAXR, cw - 80) : lbh * BRAND_MAXR);
             if (lAuto && box.slot > 0 && lf.h > box.slot - 16) lf = brandFit(lasp, Math.max(24, box.slot - 16), Math.min(lbh * BRAND_MAXR, cw - 80));
-            var lcx = lAuto ? mid : wb.x * W, lcy = lAuto ? cy + (box.padY || 34) + lf.h / 2 + 4 : wb.y * H;
-            ctx.drawImage(wl, lcx - lf.w / 2, lcy - lf.h / 2, lf.w, lf.h);
-            localLogoRect = { x: lcx / W, y: lcy / H, w: lf.w / W, h: lf.h / H, s: lbh / H };
+            var drawW = lAuto ? lf.w * cardTf.scale : lf.w;
+            var drawH = lAuto ? lf.h * cardTf.scale : lf.h;
+            var rawLcy = cy + (box.padY || 34) + lf.h / 2 + 4;
+            var lcx = lAuto ? cardTf.centerX : wb.x * W;
+            var lcy = lAuto ? (cardTf.centerY + (rawLcy - baseCardMidY) * cardTf.scale) : wb.y * H;
+            ctx.drawImage(wl, lcx - drawW / 2, lcy - drawH / 2, drawW, drawH);
+            localLogoRect = { x: lcx / W, y: lcy / H, w: drawW / W, h: drawH / H, s: (lAuto ? lbh * cardTf.scale : lbh) / H };
           }
-          var cardDataUrl = c.toDataURL('image/jpeg', 0.88);
+          var cardDataUrl = c.toDataURL('image/jpeg', fastDrag ? 0.72 : 0.88);
           if (!previewOnly) {
-            welcomeCta = localCta;
-            welcomeGeo = localGeo;
-            welcomeBaseUrl = localBaseUrl;
-            welcomeLogoRect = localLogoRect;
-            placeWelcomePulse();
-            welcomeDataUrl = cardDataUrl;
-            if (typeof brandPvLayout === 'function') brandPvLayout();
-            welcomeImg.src = welcomeDataUrl;
-            var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
-            try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
-            renderResultBg();
-            guestRender();
+            welcomeCardRect = { x: cardTf.x / W, y: cardTf.y / H, w: cardTf.w / W, h: cardTf.h / H, cx: cardTf.centerX / W, cy: cardTf.centerY / H, s: cardTf.scale, custom: cardTf.custom };
+            welcomeSampleRect = sampleTf ? { x: sampleTf.x / W, y: sampleTf.y / H, w: sampleTf.w / W, h: sampleTf.h / H, cx: sampleTf.centerX / W, cy: sampleTf.centerY / H, s: sampleTf.scale, custom: sampleTf.custom } : null;
+            if (fastDrag) {
+              var prevFast = document.getElementById('welcomePreview');
+              if (prevFast) prevFast.src = cardDataUrl;
+              try { if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay(); } catch (e) { }
+            } else {
+              welcomeCta = localCta;
+              welcomeGeo = localGeo;
+              welcomeBaseUrl = localBaseUrl;
+              welcomeLogoRect = localLogoRect;
+              placeWelcomePulse();
+              welcomeDataUrl = cardDataUrl;
+              if (typeof brandPvLayout === 'function') brandPvLayout();
+              welcomeImg.src = welcomeDataUrl;
+              var prev = document.getElementById('welcomePreview'); if (prev) prev.src = welcomeDataUrl;
+              try { if (typeof syncSetupVideoPreview === 'function') syncSetupVideoPreview(); } catch (e) { }
+              try { if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay(); } catch (e) { }
+              renderResultBg();
+              guestRender();
+            }
           } else {
             try { c.width = 0; c.height = 0; } catch (e) { }
           }
@@ -72307,6 +73772,274 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           p.style.boxShadow = '0 0 0 0 rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',.55)';
         }
       }
+      // ---- Interactive Welcome Preview: drag to move & corner-resize Card / Layout Sample ----
+      var wpvSelected = 'card';
+      var wpvDrag = null;
+      var _wpvFastTimer = 0;
+
+      function syncWelcomePvOverlay() {
+        var interact = document.getElementById('welcomePvInteract');
+        var toolbar = document.getElementById('welcomeCardArrangeBar');
+        var cardBoxEl = document.getElementById('wpvCardBox');
+        var sampleBoxEl = document.getElementById('wpvSampleBox');
+        var targetSeg = document.getElementById('wpvTargetSeg');
+        var sizeVal = document.getElementById('wpvSizeVal');
+        var resetBtn = document.getElementById('wpvResetBtn');
+        var tipEl = document.getElementById('wpvArrangeTip');
+        var isCardMode = attractMode === 'card' && !!welcomeCardRect;
+        if (interact) interact.hidden = !isCardMode;
+        if (toolbar) toolbar.hidden = !isCardMode;
+        if (!isCardMode) return;
+
+        var hasSample = !!(welcomeSampleOn !== false && welcomeSampleRect && welcomeSampleRect.w > 0 && welcomeSampleRect.h > 0);
+        if (!hasSample && wpvSelected === 'sample') wpvSelected = 'card';
+
+        if (cardBoxEl && welcomeCardRect) {
+          cardBoxEl.style.left = (welcomeCardRect.x * 100).toFixed(2) + '%';
+          cardBoxEl.style.top = (welcomeCardRect.y * 100).toFixed(2) + '%';
+          cardBoxEl.style.width = (welcomeCardRect.w * 100).toFixed(2) + '%';
+          cardBoxEl.style.height = (welcomeCardRect.h * 100).toFixed(2) + '%';
+          cardBoxEl.classList.toggle('sel', wpvSelected === 'card');
+        }
+        if (sampleBoxEl) {
+          sampleBoxEl.hidden = !hasSample;
+          if (hasSample) {
+            sampleBoxEl.style.left = (welcomeSampleRect.x * 100).toFixed(2) + '%';
+            sampleBoxEl.style.top = (welcomeSampleRect.y * 100).toFixed(2) + '%';
+            sampleBoxEl.style.width = (welcomeSampleRect.w * 100).toFixed(2) + '%';
+            sampleBoxEl.style.height = (welcomeSampleRect.h * 100).toFixed(2) + '%';
+            sampleBoxEl.classList.toggle('sel', wpvSelected === 'sample');
+          }
+        }
+        if (targetSeg) {
+          targetSeg.hidden = !hasSample;
+          [].forEach.call(targetSeg.querySelectorAll('[data-wpv-target]'), function (b) {
+            b.classList.toggle('on', b.dataset.wpvTarget === wpvSelected);
+          });
+        }
+        var activeScale = wpvSelected === 'sample' ? (Number(welcomeSampleScale) || 1) : (Number(welcomeCardScale) || 1);
+        if (sizeVal) sizeVal.textContent = Math.round(activeScale * 100) + '%';
+        var anyCustom = (welcomeCardX != null || welcomeCardY != null || Math.abs((Number(welcomeCardScale) || 1) - 1) > 0.005 ||
+          welcomeSampleX != null || welcomeSampleY != null || Math.abs((Number(welcomeSampleScale) || 1) - 1) > 0.005);
+        if (resetBtn) resetBtn.disabled = !anyCustom;
+        if (tipEl) {
+          tipEl.textContent = hasSample
+            ? 'Drag Card or Sample on preview to move · drag corners to resize'
+            : 'Drag card on preview to move · drag corners to resize';
+        }
+      }
+
+      function scheduleWpvFastRender() {
+        if (_wpvFastTimer) return;
+        _wpvFastTimer = setTimeout(function () {
+          _wpvFastTimer = 0;
+          renderWelcomeSurface({ fastDrag: true });
+        }, 36);
+      }
+
+      (function initWelcomePvInteract() {
+        var interact = document.getElementById('welcomePvInteract');
+        var guideX = document.getElementById('wpvGuideX');
+        var guideY = document.getElementById('wpvGuideY');
+        var targetSeg = document.getElementById('wpvTargetSeg');
+        var snapGroup = document.getElementById('wpvSnapGroup');
+        var sizeDown = document.getElementById('wpvSizeDown');
+        var sizeUp = document.getElementById('wpvSizeUp');
+        var resetBtn = document.getElementById('wpvResetBtn');
+        var sizeToggleBtn = document.getElementById('welcomePvSizeBtn');
+        var hideToggleBtn = document.getElementById('welcomePvHideBtn');
+        var pvCard = document.getElementById('welcomePvCard');
+        var afterHideBtn = document.getElementById('afterPvHideBtn');
+        var afterPvCard = document.getElementById('afterPvCard');
+
+        function setTargetPos(which, x, y) {
+          var cx = Math.max(0.02, Math.min(0.98, x));
+          var cy = Math.max(0.02, Math.min(0.98, y));
+          if (which === 'sample') { welcomeSampleX = cx; welcomeSampleY = cy; }
+          else { welcomeCardX = cx; welcomeCardY = cy; }
+        }
+        function setTargetScale(which, s) {
+          var cl = Math.max(0.45, Math.min(1.5, Math.round(s * 100) / 100));
+          if (which === 'sample') welcomeSampleScale = cl;
+          else welcomeCardScale = cl;
+        }
+        function getTargetRect(which) {
+          return which === 'sample' ? welcomeSampleRect : welcomeCardRect;
+        }
+        function getTargetScale(which) {
+          return which === 'sample' ? (Number(welcomeSampleScale) || 1) : (Number(welcomeCardScale) || 1);
+        }
+
+        if (interact) {
+          interact.addEventListener('pointerdown', function (e) {
+            if (e.button > 0) return;
+            var boxEl = e.target.closest('.wpv-box');
+            if (!boxEl || boxEl.hidden) return;
+            var which = boxEl.dataset.wpv === 'sample' ? 'sample' : 'card';
+            var rect = getTargetRect(which);
+            if (!rect) return;
+            e.preventDefault();
+            e.stopPropagation();
+            wpvSelected = which;
+            var isSize = e.target.classList.contains('wpv-h');
+            var r = interact.getBoundingClientRect();
+            if (!(r.width > 0 && r.height > 0)) return;
+            var px = (e.clientX - r.left) / r.width;
+            var py = (e.clientY - r.top) / r.height;
+            var cx = rect.cx, cy = rect.cy;
+            var d0 = Math.max(0.03, Math.hypot((e.clientX - (r.left + cx * r.width)), (e.clientY - (r.top + cy * r.height))));
+            wpvDrag = {
+              which: which,
+              id: e.pointerId,
+              mode: isSize ? 'size' : 'move',
+              px: px, py: py,
+              cx: cx, cy: cy,
+              d0: d0,
+              s0: getTargetScale(which),
+              moved: false,
+              boxEl: boxEl
+            };
+            boxEl.classList.add('dragging');
+            try { interact.setPointerCapture(e.pointerId); } catch (err) { }
+            syncWelcomePvOverlay();
+          });
+
+          interact.addEventListener('pointermove', function (e) {
+            var d = wpvDrag;
+            if (!d || e.pointerId !== d.id) return;
+            var r = interact.getBoundingClientRect();
+            if (!(r.width > 0 && r.height > 0)) return;
+            var px = (e.clientX - r.left) / r.width;
+            var py = (e.clientY - r.top) / r.height;
+            if (Math.abs(px - d.px) + Math.abs(py - d.py) > 0.004) d.moved = true;
+            var snapX = false, snapY = false;
+            if (d.mode === 'size') {
+              var dist = Math.max(8, Math.hypot(e.clientX - (r.left + d.cx * r.width), e.clientY - (r.top + d.cy * r.height)));
+              setTargetScale(d.which, d.s0 * (dist / d.d0));
+            } else {
+              var nx = d.cx + (px - d.px);
+              var ny = d.cy + (py - d.py);
+              if (Math.abs(nx - 0.5) < 0.02) { nx = 0.5; snapX = true; }
+              if (Math.abs(ny - 0.5) < 0.02) { ny = 0.5; snapY = true; }
+              setTargetPos(d.which, nx, ny);
+            }
+            if (guideX) guideX.classList.toggle('on', snapX);
+            if (guideY) guideY.classList.toggle('on', snapY);
+            scheduleWpvFastRender();
+          });
+
+          function endWpvDrag(e) {
+            var d = wpvDrag;
+            if (!d || (e && e.pointerId != null && e.pointerId !== d.id)) return;
+            wpvDrag = null;
+            if (d.boxEl) d.boxEl.classList.remove('dragging');
+            if (guideX) guideX.classList.remove('on');
+            if (guideY) guideY.classList.remove('on');
+            clearTimeout(_wpvFastTimer); _wpvFastTimer = 0;
+            try { if (e && e.pointerId != null) interact.releasePointerCapture(e.pointerId); } catch (err) { }
+            if (d.moved) {
+              renderWelcome();
+              if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+            } else {
+              syncWelcomePvOverlay();
+            }
+          }
+          interact.addEventListener('pointerup', endWpvDrag);
+          interact.addEventListener('pointercancel', endWpvDrag);
+          interact.addEventListener('lostpointercapture', endWpvDrag);
+          interact.addEventListener('dblclick', function (e) {
+            var boxEl = e.target.closest('.wpv-box');
+            if (!boxEl || boxEl.hidden) return;
+            var which = boxEl.dataset.wpv === 'sample' ? 'sample' : 'card';
+            var rect = getTargetRect(which);
+            if (!rect) return;
+            setTargetPos(which, 0.5, rect.cy);
+            renderWelcome();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+
+        if (targetSeg) {
+          targetSeg.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-wpv-target]'); if (!b) return;
+            wpvSelected = b.dataset.wpvTarget === 'sample' ? 'sample' : 'card';
+            syncWelcomePvOverlay();
+          });
+        }
+        if (snapGroup) {
+          snapGroup.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-wpv-pos]'); if (!b) return;
+            var pos = b.dataset.wpvPos;
+            var rect = getTargetRect(wpvSelected);
+            var halfH = rect ? (rect.h / 2) : 0.18;
+            var curX = (wpvSelected === 'sample' ? welcomeSampleX : welcomeCardX);
+            var x = curX != null ? curX : (rect ? rect.cx : 0.5);
+            var y = pos === 'top' ? Math.min(0.46, Math.max(0.12, halfH + 0.06))
+              : (pos === 'bottom' ? Math.max(0.54, Math.min(0.92, 1 - halfH - 0.045)) : 0.5);
+            if (pos === 'center') x = 0.5;
+            setTargetPos(wpvSelected, x, y);
+            renderWelcome();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        if (sizeDown) {
+          sizeDown.addEventListener('click', function () {
+            setTargetScale(wpvSelected, getTargetScale(wpvSelected) - 0.05);
+            renderWelcome();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        if (sizeUp) {
+          sizeUp.addEventListener('click', function () {
+            setTargetScale(wpvSelected, getTargetScale(wpvSelected) + 0.05);
+            renderWelcome();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        if (resetBtn) {
+          resetBtn.addEventListener('click', function () {
+            var selCustom = wpvSelected === 'sample'
+              ? (welcomeSampleX != null || welcomeSampleY != null || Math.abs((Number(welcomeSampleScale) || 1) - 1) > 0.005)
+              : (welcomeCardX != null || welcomeCardY != null || Math.abs((Number(welcomeCardScale) || 1) - 1) > 0.005);
+            if (selCustom) {
+              if (wpvSelected === 'sample') { welcomeSampleX = null; welcomeSampleY = null; welcomeSampleScale = 1; }
+              else { welcomeCardX = null; welcomeCardY = null; welcomeCardScale = 1; }
+            } else {
+              welcomeCardX = null; welcomeCardY = null; welcomeCardScale = 1;
+              welcomeSampleX = null; welcomeSampleY = null; welcomeSampleScale = 1;
+            }
+            renderWelcome();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        if (sizeToggleBtn && pvCard) {
+          sizeToggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            pvCard.classList.remove('pv-collapsed');
+            if (hideToggleBtn) hideToggleBtn.textContent = 'Hide';
+            var exp = pvCard.classList.toggle('pv-expanded');
+            sizeToggleBtn.textContent = exp ? 'Compact' : 'Expand';
+          });
+        }
+        if (hideToggleBtn && pvCard) {
+          hideToggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var col = pvCard.classList.toggle('pv-collapsed');
+            hideToggleBtn.textContent = col ? 'Show' : 'Hide';
+            if (col) {
+              pvCard.classList.remove('pv-expanded');
+              if (sizeToggleBtn) sizeToggleBtn.textContent = 'Expand';
+            }
+          });
+        }
+        if (afterHideBtn && afterPvCard) {
+          afterHideBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var col = afterPvCard.classList.toggle('pv-collapsed');
+            afterHideBtn.textContent = col ? 'Show' : 'Hide';
+          });
+        }
+      })();
       video.addEventListener('loadedmetadata', function () { scheduleWelcomeRender(); });
       function isMainWelcomeActive() {
         if (!welcomeOn || state !== 'idle' || flowBusy || pickOpen) return false;
@@ -78582,6 +80315,12 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           welcomeStep1: welcomeStep1,
           welcomeStep2: welcomeStep2,
           welcomeStep3: welcomeStep3,
+          welcomeCardX: welcomeCardX != null ? Math.round(welcomeCardX * 10000) / 10000 : null,
+          welcomeCardY: welcomeCardY != null ? Math.round(welcomeCardY * 10000) / 10000 : null,
+          welcomeCardScale: Math.round((Number(welcomeCardScale) || 1) * 1000) / 1000,
+          welcomeSampleX: welcomeSampleX != null ? Math.round(welcomeSampleX * 10000) / 10000 : null,
+          welcomeSampleY: welcomeSampleY != null ? Math.round(welcomeSampleY * 10000) / 10000 : null,
+          welcomeSampleScale: Math.round((Number(welcomeSampleScale) || 1) * 1000) / 1000,
           attractMode: attractMode,
           attractPosterFit: attractPosterFit,
           attractPosterType: attractPosterType || 'image',
@@ -78894,6 +80633,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           if (typeof s.welcomeStep1 === 'string') { welcomeStep1 = s.welcomeStep1; if (welcomeStep1Input) welcomeStep1Input.value = welcomeStep1; }
           if (typeof s.welcomeStep2 === 'string') { welcomeStep2 = s.welcomeStep2; if (welcomeStep2Input) welcomeStep2Input.value = welcomeStep2; }
           if (typeof s.welcomeStep3 === 'string') { welcomeStep3 = s.welcomeStep3; if (welcomeStep3Input) welcomeStep3Input.value = welcomeStep3; }
+          if ('welcomeCardX' in s || 'welcomeCardY' in s) {
+            var _wcx = s.welcomeCardX, _wcy = s.welcomeCardY;
+            welcomeCardX = (_wcx != null && isFinite(Number(_wcx))) ? Math.max(0, Math.min(1, Number(_wcx))) : null;
+            welcomeCardY = (_wcy != null && isFinite(Number(_wcy))) ? Math.max(0, Math.min(1, Number(_wcy))) : null;
+          }
+          if ('welcomeCardScale' in s) {
+            var _wcs = Number(s.welcomeCardScale);
+            welcomeCardScale = (isFinite(_wcs) && _wcs > 0) ? Math.max(0.45, Math.min(1.5, _wcs)) : 1;
+          }
+          if ('welcomeSampleX' in s || 'welcomeSampleY' in s) {
+            var _wsx = s.welcomeSampleX, _wsy = s.welcomeSampleY;
+            welcomeSampleX = (_wsx != null && isFinite(Number(_wsx))) ? Math.max(0, Math.min(1, Number(_wsx))) : null;
+            welcomeSampleY = (_wsy != null && isFinite(Number(_wsy))) ? Math.max(0, Math.min(1, Number(_wsy))) : null;
+          }
+          if ('welcomeSampleScale' in s) {
+            var _wss = Number(s.welcomeSampleScale);
+            welcomeSampleScale = (isFinite(_wss) && _wss > 0) ? Math.max(0.45, Math.min(1.5, _wss)) : 1;
+          }
+          if (typeof syncWelcomePvOverlay === 'function') syncWelcomePvOverlay();
           if (typeof setAttractModeUI === 'function') {
             setAttractModeUI(s.attractMode || 'card');
           } else {
@@ -79576,7 +81334,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       ['input', 'change', 'click'].forEach(function (type) {
         tabSetup.addEventListener(type, function (e) {
           if (e.target === driveFolderKeyInput) return;
-          if (type === 'click' && e.target && e.target.closest && e.target.closest('summary, .step-tab, .seg-tabs button, .pb-tip-btn, .pb-guide-q, #startSave, #setupSaveNote')) return;
+          if (type === 'click' && e.target && e.target.closest && e.target.closest('summary, .step-tab, .seg-tabs button, .pb-tip-btn, .pb-guide-q, .welcome-pv-ctl, #wpvTargetSeg, #startSave, #setupSaveNote')) return;
           scheduleSetupSave();
         }, true);
       });
@@ -88714,6 +90472,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         else if (n !== 7 || (typeof fx !== 'undefined' && fx.hands === 'off')) { try { camSleepNow(); } catch (e) { } }
         refreshSetupNav();
         if (n === 7 && typeof refreshD7Tabs === 'function') refreshD7Tabs();
+        else {
+          document.body.classList.remove('setup-welcome-pv', 'setup-after-pv');
+        }
         if (typeof scpRefresh === 'function') scpRefresh();
         if (!(opts && opts.noScroll)) {
           var top = setupShellEl.getBoundingClientRect().top + window.scrollY - 4;
@@ -89444,7 +91205,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
       function layoutDesignSig() {
         var s = snapshotSetup({ skipDesignSync: true });
-        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'firstTimerSec', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'resultReviewSec', 'allowRetake', 'reviewFraming', 'qrPop', 'qrPopDelay', 'qrMatchWelcome', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
+        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'guestDesigns', 'activeDesignIdx', 'firstTimerSec', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'resultReviewSec', 'allowRetake', 'reviewFraming', 'qrPop', 'qrPopDelay', 'qrMatchWelcome', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy', 'welcomeCardX', 'welcomeCardY', 'welcomeCardScale', 'welcomeSampleX', 'welcomeSampleY', 'welcomeSampleScale'].forEach(function (k) { delete s[k]; });
         return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
       }
       function setLayoutThumb(btn, url) {
@@ -89624,6 +91385,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (p === 'share') {
           try { if (typeof renderAfterPreview === 'function') renderAfterPreview(); } catch (e) { }
         }
+        var inStep7 = typeof curStep !== 'undefined' && curStep === 7;
+        document.body.classList.toggle('setup-welcome-pv', inStep7 && p === 'welcome');
+        document.body.classList.toggle('setup-after-pv', inStep7 && p === 'share');
       }
       document.getElementById('d7NextBtn').addEventListener('click', function () {
         d7Pane = this.dataset.pane;
@@ -90219,7 +91983,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             if (creds) creds.render(i);
             if (i.busy) { hint.className = 'panel-hint'; hint.textContent = 'Working on it… this can take up to a minute.'; }
             else if (i.on && i.external) { hint.className = 'panel-hint'; hint.textContent = 'Internet Sharing is on ✓ Its name and password are the ones in System Settings → Sharing → Wi-Fi Options. Type them in the Wi-Fi boxes below so the Join QR matches.'; }
-            else if (i.on) { hint.className = 'panel-hint'; hint.textContent = 'The booth Wi-Fi is on ✓ Guests scan the Join QR below, then their photo QR. Their phone may say “no internet”: they should stay connected.'; }
+            else if (i.on) {
+              var maxC = Number(i.maxClients) || 8, curC = Number(i.clients) || 0;
+              var capMsg = ' (' + curC + '/' + maxC + ' phones connected' + (curC >= maxC - 1 ? ' — nearly full! Ask earlier guests to disconnect, or use a pocket router for big crowds' : '') + ')';
+              var venueWarn = (!DESKTOP_ONLINE && i.venueWifi)
+                ? ' ⚠ Also joined to venue Wi-Fi “' + i.venueWifi + '” — weak venue Wi-Fi can make iPhones drop off Booth Wi-Fi; disconnect from venue Wi-Fi for the most stable offline QR.'
+                : '';
+              hint.className = (curC >= maxC - 1 || venueWarn) ? 'panel-hint bad' : 'panel-hint';
+              hint.textContent = 'The booth Wi-Fi is on ✓' + capMsg + '. Guests scan the Join QR below, then their photo QR.' + venueWarn;
+            }
             else if (i.error) { hint.className = 'panel-hint bad'; hint.textContent = i.error; }
             else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this laptop makes its own Wi-Fi for guests. Then the laptop has no internet unless it also uses a cable.'; }
             var extBox = document.getElementById('deskExternalWifiBox');
@@ -90294,6 +92066,30 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             showToast(r.error || 'Couldn\u2019t deactivate.', 6000);
           });
         });
+        // Safe Graphics toggle (Setup -> licence & diagnostics): lets operators switch cleanly on laptops whose GPU driver freezes.
+        (function () {
+          var gBox = document.getElementById('deskGfxBox'), gHint = document.getElementById('deskGfxHint'), gBtn = document.getElementById('deskGfxToggleBtn');
+          if (!(gBox && gHint && gBtn && api.graphicsInfo && api.setSafeGraphics)) return;
+          var curSafe = false;
+          function renderGfx(g) {
+            if (!g) return;
+            curSafe = !!g.safe;
+            gBox.style.display = '';
+            gHint.textContent = curSafe
+              ? 'Safe graphics mode is ON (prevents \u201cNot Responding\u201d freezes on laptops with unstable graphics drivers).'
+              : 'Normal graphics mode is ON. If this laptop ever freezes or shows \u201cNot Responding\u201d, switch to Safe graphics mode.';
+            gBtn.textContent = curSafe ? 'Use normal graphics & restart' : 'Use Safe graphics & restart';
+            gBtn.disabled = false;
+          }
+          api.graphicsInfo().then(renderGfx).catch(function () { });
+          gBtn.addEventListener('click', function () {
+            if (document.querySelector('.app-shell.capturing')) { showToast('Finish the current session before restarting.'); return; }
+            gBtn.disabled = true;
+            gBtn.textContent = 'Restarting\u2026';
+            var nextMode = curSafe ? 'auto' : 'on';
+            api.setSafeGraphics(nextMode, true).catch(function () { gBtn.disabled = false; api.graphicsInfo().then(renderGfx).catch(function () { }); });
+          });
+        })();
         // A check-in found this laptop removed / code disabled / mode or Print Station / Arrange & Print switched by Admin: reload (after any session in progress).
         api.onLicence(function (info) {
           if (info && info.ok && !info.modeChanged && !info.printStationChanged && !info.arrangePrintChanged && (!info.appMode || info.appMode === DESKTOP_APP_MODE)) return;
@@ -90503,6 +92299,10 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         ppPrintFirst: 'Synced with Result & QR screen: waits until the automatic print completes before showing the download QR code.',
         payVoucherPrinterToggle: 'Lets you assign a dedicated printer (with its own colour and quality settings) to each payment option or voucher. Synced with Printer settings.',
         welcomeToggle: 'Displays the attract / Tap to start welcome screen between guests when idle.',
+        welcomeVgBtnToggle: 'Places a frosted circular Video Guestbook shortcut directly on the Welcome screen alongside Start Photo (works even when the booth is locked).',
+        welcome360BtnToggle: 'Places a frosted circular 360 Booth shortcut directly on the Welcome screen for instant guest access.',
+        welcomeOutPickToggle: 'Lets guests choose Photo, GIF, or Flipbook right on the Welcome screen instead of using only one default mode.',
+        gbWelcomeShortcutToggle: 'Adds a direct Video Guestbook button on the booth Welcome screen so guests do not need operator tools.',
         softSkinToggle: 'Applies a subtle smoothing glow to live camera & captured photos.',
         dateStampToggle: 'Prints a vintage amber camera date stamp onto the corner of each shot in prints & collages (solo photos stay clean).'
       };

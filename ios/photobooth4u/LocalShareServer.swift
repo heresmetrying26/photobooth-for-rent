@@ -40,7 +40,7 @@ class LocalShareServer {
     private var restartScheduled = false
     private let acceptQueue = DispatchQueue(label: "com.photobooth4u.shareserver.accept", qos: .utility, attributes: .concurrent)
     private let clientQueue = DispatchQueue(label: "com.photobooth4u.shareserver.client", qos: .utility, attributes: .concurrent)
-    private let connLimit = DispatchSemaphore(value: 16)
+    private let connLimit = DispatchSemaphore(value: 32)
 
     func start() -> UInt16 {
         serverLock.lock()
@@ -226,16 +226,25 @@ class LocalShareServer {
         defer { close(sock) }
         var noSigPipe: Int32 = 1
         setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
-        var rcvTv = timeval(tv_sec: 5, tv_usec: 0)
+        var rcvTv = timeval(tv_sec: 10, tv_usec: 0)
         setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &rcvTv, socklen_t(MemoryLayout<timeval>.size))
-        var sndTv = timeval(tv_sec: 15, tv_usec: 0)
+        var sndTv = timeval(tv_sec: 30, tv_usec: 0)
         setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &sndTv, socklen_t(MemoryLayout<timeval>.size))
 
-        var buffer = [UInt8](repeating: 0, count: 4096)
-        let bytesRead = read(sock, &buffer, buffer.count)
-        guard bytesRead > 0 else { return }
+        // Loop read() until end-of-headers (\r\n\r\n or \n\n) so split mobile TCP packets are never truncated.
+        var reqBytes = Data()
+        var chunk = [UInt8](repeating: 0, count: 4096)
+        let crlfcrlf = Data([13, 10, 13, 10])
+        let lflf = Data([10, 10])
+        while reqBytes.count < 16384 {
+            let n = read(sock, &chunk, chunk.count)
+            if n <= 0 { break }
+            reqBytes.append(contentsOf: chunk[0..<n])
+            if reqBytes.range(of: crlfcrlf) != nil || reqBytes.range(of: lflf) != nil { break }
+        }
+        guard !reqBytes.isEmpty else { return }
 
-        let req = String(bytes: buffer[0..<bytesRead], encoding: .utf8) ?? ""
+        let req = String(data: reqBytes, encoding: .utf8) ?? String(data: reqBytes, encoding: .isoLatin1) ?? ""
         let reqLines = req.components(separatedBy: "\r\n")
         guard let line = reqLines.first else { return }
         let parts = line.components(separatedBy: " ")
@@ -413,11 +422,18 @@ class LocalShareServer {
             let code = components[1]
             guard let gc = PBLocal.shared.guestCode(code),
                   let folder = PBLocal.shared.folderBySlug(gc.slug) else {
-                sendResponse(sock, status: 404, type: "text/html; charset=utf-8", body: Data(renderErrorHtml(title: "Photos Not Found", message: "Check the QR code or link.").utf8), headOnly: headOnly)
+                let html = renderWaitingHtml(title: "Your photos are on their way", message: "Wait a moment — this page refreshes automatically.", allHref: nil)
+                sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
                 return
             }
             let dir = PBLocal.shared.dirOf(folder: folder)
             let files = gc.files.compactMap { PBLocal.shared.findFile(in: dir, name: $0) }
+            if files.isEmpty {
+                let showAll = PBLocal.shared.guestView != "only"
+                let html = renderWaitingHtml(title: "Your photos are on their way", message: "Wait a moment — this page refreshes automatically.", allHref: showAll ? "/e/\(folder.slug)/" : nil)
+                sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
+                return
+            }
             let showAll = PBLocal.shared.guestView != "only"
             let html = renderGalleryHtml(folder: folder, files: files, showAllLink: showAll, headOnlyTitle: "Your Photos — \(PBLocal.shared.galleryTitle(folder: folder))")
             sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
@@ -472,6 +488,12 @@ class LocalShareServer {
         }
 
         guard let fileUrl = PBLocal.shared.findFile(in: dir, name: filename) else {
+            if action == "p" {
+                let showAll = PBLocal.shared.guestView != "only"
+                let html = renderWaitingHtml(title: "Your photo is on its way", message: "Wait a moment — this page refreshes automatically.", allHref: showAll ? "/e/\(slug)/" : nil)
+                sendResponse(sock, status: 200, type: "text/html; charset=utf-8", body: Data(html.utf8), headOnly: headOnly)
+                return
+            }
             sendResponse(sock, status: 404, type: "text/plain", body: Data("File Not Found".utf8), headOnly: headOnly)
             return
         }
@@ -659,7 +681,7 @@ class LocalShareServer {
                 itemsHtml += """
                 <div class="card">
                     <a href="/e/\(folder.slug)/p/\(encName)">
-                        <img src="/e/\(folder.slug)/f/\(encName)" loading="lazy" alt="Photo" />
+                        <img src="/e/\(folder.slug)/t/\(encName)" loading="lazy" alt="Photo" />
                     </a>
                 </div>
                 """
@@ -733,20 +755,48 @@ class LocalShareServer {
                 .actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
                 .btn { display: inline-block; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; background: #C93D27; color: #fff; border: 0; cursor: pointer; font-family: inherit; }
                 .btn.alt { background: #fff; color: #1C1A1E; border: 1.5px solid #E4DCCF; }
-                @media print { @page { margin: 0; } body { padding: 0; background: #fff; } .actions { display: none !important; } .box { max-width: none; } img { max-width: 100vw; max-height: 100vh; border-radius: 0; box-shadow: none; } }
+                .tip { color: #6B666C; font-size: 13px; line-height: 1.5; margin: 14px auto 0; max-width: 420px; text-align: left; }
+                .saved-note { display: none; background: #e8f6ee; border: 1px solid #b7e2c8; color: #1b5e36; border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; margin-top: 14px; }
+                @media print { @page { margin: 0; } body { padding: 0; background: #fff; } .actions, .tip, .saved-note { display: none !important; } .box { max-width: none; } img { max-width: 100vw; max-height: 100vh; border-radius: 0; box-shadow: none; } }
             </style>
         </head>
         <body>
             <div class="box">
                 \(mediaTag)
                 <div class="actions">
-                    <a class="btn" href="/e/\(slug)/f/\(encName)?dl=1" download="\(safeFile)">Save Photo</a>
+                    <a class="btn" id="btnDl" href="/e/\(slug)/f/\(encName)?dl=1" download="\(safeFile)">\(isVideo ? "Save Video" : isGif ? "Save GIF" : "Save Photo")</a>
                     \(printBtn)
                     <a class="btn alt" href="/e/\(slug)/">All Photos</a>
                 </div>
+                <div class="saved-note" id="pbSavedNote">Saved! You can now switch back to your regular Wi-Fi or Mobile Data so the next guest can connect fast.</div>
+                <p class="tip"><b>iPhone stuck loading?</b> Turn <b>Mobile Data (4G/5G) OFF</b> for 5 seconds, check you’re on the Booth Wi-Fi, then tap Reload.</p>
             </div>
+            <script>(function(){
+                var dl=document.getElementById('btnDl'),sn=document.getElementById('pbSavedNote');
+                if(dl&&sn)dl.addEventListener('click',function(){setTimeout(function(){sn.style.display='block'},900)});
+                var im=document.querySelector('.box img');
+                if(im){var base=im.getAttribute('src')||'',tries=0;im.addEventListener('error',function(){
+                    if(tries<4){tries++;setTimeout(function(){im.src=base+(base.indexOf('?')<0?'?':'&')+'_r='+tries+'_'+Date.now()},900*tries);return;}
+                    var b=document.createElement('div');b.className='tip';b.style.cssText='background:#fff4e6;border:1px solid #f0cfa0;border-radius:10px;padding:10px 12px;text-align:center';
+                    b.innerHTML='<b>Photo couldn’t load over Wi-Fi.</b><br>Turn Mobile Data OFF briefly, stay on Booth Wi-Fi, then tap below.<br><button type="button" class="btn" style="margin-top:10px" onclick="location.reload()">Reload photo</button>';
+                    im.parentNode.insertBefore(b,im.nextSibling);
+                });}
+            })();</script>
         </body>
         </html>
+        """
+    }
+
+    private func renderWaitingHtml(title: String, message: String, allHref: String?) -> String {
+        let allBtn = allHref != nil ? "<p style=\"margin-top:14px\"><a style=\"display:inline-block;padding:12px 20px;border-radius:12px;background:#fff;border:1.5px solid #E4DCCF;color:#1C1A1E;text-decoration:none;font-weight:700\" href=\"\(allHref!)\">All Photos</a></p>" : ""
+        return """
+        <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>\(esc(title))</title>
+        <style>body{margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#F5F1EA;color:#1C1A1E;text-align:center;padding:48px 20px}
+        .sp{margin:24px auto;width:44px;height:44px;border:4px solid #E4DCCF;border-top-color:#C93D27;border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+        .tip{max-width:400px;margin:16px auto 0;color:#6B666C;font-size:13px;line-height:1.5}</style></head>
+        <body><h2>\(esc(title))</h2><div class="sp"></div><p style="color:#6B666C">\(esc(message))</p>\(allBtn)
+        <p class="tip"><b>iPhone user?</b> If this stays stuck, turn <b>Mobile Data (4G/5G) OFF</b> for 5 seconds and check you’re still on the Booth Wi-Fi.</p>
+        <script>setTimeout(function(){location.reload()},3000)</script></body></html>
         """
     }
 

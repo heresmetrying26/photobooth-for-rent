@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { discoverNetworkPrinters, ippCaps, ippPrintDirect, waitIppIdle, pickMediaName, mediaSizeMm, directFormats, labelMediaType, diagNetworkInfo, ippDiagProbe, ippDiagPrint } from './netprinters.mjs';
 import { probeUsbPrinters, makeUsbIppTransport, usbSelphyPrint, usbDnpPrint, usbDnpStatus } from './usbipp.mjs';
+import { canScanUsbOffProcess, scanUsbOffProcess, stopUsbEnum } from './usb-enum.mjs';
 import { SELPHY_SPECS, selphySpecFor } from './selphyusb.mjs';
 import { DNP_SHEETS, dnpSheetFor } from './dnpusb.mjs';
 import { createHotFolderStore, detectDnpHotFolders, dropToHotFolder } from './hotfolder.mjs';
@@ -84,7 +85,7 @@ async function refreshUsbDirect(sysList, force, preFound) {
   if (!force && usbDirectAt && Date.now() - usbDirectAt < 8000) return;
   usbDirectAt = Date.now();
   try {
-    const found = Array.isArray(preFound) ? preFound : await probeUsbPrinters();
+    const found = Array.isArray(preFound) ? preFound : await probeUsbPrinters({ force: !!force, logger: log });
     usbDirect.clear();
     const sys = (sysList || []).map((n) => ({ name: n, port: '', host: '' }));
     for (const p of found) {
@@ -143,7 +144,22 @@ function readMovieProgress() {
   };
 }
 
-export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, dnpJob, dnpPrintOpts: dOpts, hotFoldersFile, pickHotFolder, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir }) {
+const warmTimers = [];
+function clearWarmTimers() {
+  while (warmTimers.length) clearTimeout(warmTimers.pop());
+}
+function scheduleWarm(fn, delayMs) {
+  const t = setTimeout(() => {
+    const idx = warmTimers.indexOf(t);
+    if (idx >= 0) warmTimers.splice(idx, 1);
+    try { fn(); } catch { /* ignore */ }
+  }, delayMs);
+  if (t.unref) t.unref();
+  warmTimers.push(t);
+}
+
+export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpeg, rasterize: raster, selphyJob, selphyPrintOpts: sOpts, dnpJob, dnpPrintOpts: dOpts, hotFoldersFile, pickHotFolder, ippWaitOpts: iOpts, directPrintersFile, spinInboxDir, deferWarm = false }) {
+  clearWarmTimers();
   if (logger) { log = logger; gopro.setLogger((m) => log('GoPro: ' + m)); }
   if (typeof shrink === 'function') shrinkPage = shrink;
   if (typeof jpeg === 'function') toJpeg = jpeg;
@@ -164,10 +180,21 @@ export function initHelper({ workerPath, logger, shrinkPage: shrink, toJpeg: jpe
   usbDirectAt = 0;
   if (directPrintersFile) { directFile = directPrintersFile; loadDirect(); }
   try { WORKER_PS = readFileSync(workerPath, 'utf8').replace(/^\uFEFF+/, ''); } catch { WORKER_PS = ''; }   // no BOM here: the one written in front of it at start-up is the only one PowerShell may see (two broke every start in 1.1.87)
-  refreshPrinters();
-  if (IS_WIN && WORKER_PS) {
-    camStart().catch((e) => log(String(e && e.message || e)));
-    getWinPrintWorker()?.warm();
+  if (deferWarm) {
+    // Stagger PowerShell/.NET workers after window creation so lower-end laptops (e.g. ASUS VivoBook)
+    // do not run two csc.exe compilations + WMI + Chromium startup at the exact same millisecond.
+    // Any explicit /status, /camera/*, /paper, or /print request still starts its worker immediately on demand.
+    scheduleWarm(() => { refreshPrinters(); }, 1500);
+    if (IS_WIN && WORKER_PS) {
+      scheduleWarm(() => { camStart().catch((e) => log(String(e && e.message || e))); }, 2500);
+      scheduleWarm(() => { getWinPrintWorker()?.warm(); }, 6000);
+    }
+  } else {
+    refreshPrinters();
+    if (IS_WIN && WORKER_PS) {
+      camStart().catch((e) => log(String(e && e.message || e)));
+      getWinPrintWorker()?.warm();
+    }
   }
 }
 
@@ -705,11 +732,13 @@ const near = (s, a, b, tol = 3) => { const sa = Math.min(s.w, s.h), sb = Math.ma
 const SPLIT_PAPER_NAME = /(?:(?:^|[^a-z0-9])(?:split|2[\s_-]?up|div2|2[\s_-]?in(?:ch)?[\s_-]?cut|2[\s_-]?cut|2[\s_-]?strips?)(?=$|[^a-z0-9])|(?:^|[^0-9])(?:2\s*[x×]\s*6|6\s*[x×]\s*2)(?=$|[^0-9])|cut[\s_-]?2\s*[x×]\s*6|(?:^|[^0-9])(?:4\s*[x×]\s*6|6\s*[x×]\s*4)\)?\s*[*×x]\s*2(?=$|[^0-9]))/i;
 export const isSplitPaperName = (s) => SPLIT_PAPER_NAME.test(String(s || ''));
 const isSplitPaper = (s) => !!(s && isSplitPaperName((s.key || '') + ' ' + (s.name || '')));
+const IS_SELPHY = /selphy|\bcp[\s_-]?(?:820|910|1000|1200|1300|1500)\b|canon.*\bcp\s?\d{3,4}\b/i;
 async function pickPaper(printer, widthMm, heightMm, twoUp) {
   if (!(widthMm > 0 && heightMm > 0)) return null;
   const a = Math.min(widthMm, heightMm), b = Math.max(widthMm, heightMm);
   const allowTwoUp = twoUp !== false && (twoUp === true || a <= 60);
   const isDyeSub = DYE_SUB.test(String(printer || ''));
+  const isSelphy = IS_SELPHY.test(String(printer || ''));
   const { sizes, def } = await paperSizes(printer);
   const d = def && sizes.find((s) => s.key === def);
   const matchesDim = (s, tol = 3) => near(s, a, b, tol) || (allowTwoUp && a / b < 0.45 && near(s, a * 2, b, tol));
@@ -720,7 +749,17 @@ async function pickPaper(printer, widthMm, heightMm, twoUp) {
     const db = Math.abs(sb - b);
     return da + db - (s.borderless ? 2.5 : 0);
   };
-  if (isDyeSub && typeof twoUp === 'boolean') {
+  const betterBorderlessFor = (tol) => {
+    if (!isSelphy || !d || d.borderless) return null;
+    let bestBl = null;
+    for (const s of sizes) {
+      if (!s.borderless || !matchesDim(s, tol)) continue;
+      const sc = scoreOf(s, tol);
+      if (!bestBl || sc < bestBl.score) bestBl = { ...s, score: sc };
+    }
+    return bestBl;
+  };
+  if (isDyeSub && !isSelphy && typeof twoUp === 'boolean') {
     const wantSplit = twoUp === true;
     const cands = sizes.filter((s) => matchesDim(s, 3));
     if (d && matchesDim(d, 3) && isSplitPaper(d) === wantSplit) return { ...d, keep: true };
@@ -737,19 +776,25 @@ async function pickPaper(printer, widthMm, heightMm, twoUp) {
     // preserve the queue's default when its dimensions match so saved driver preferences stay intact.
     if (d && matchesDim(d, 3)) return { ...d, keep: true };
   } else if (d && matchesDim(d, 3)) {
+    const bl = betterBorderlessFor(3);
+    if (bl) return { ...bl, keep: false };
     return { ...d, keep: true };
   }
   let best = null;
   for (const s of sizes) {
     if (!matchesDim(s, 3)) continue;
-    const splitPenalty = isDyeSub && isSplitPaper(s) ? (twoUp === true || a <= 60 ? -4 : 4) : 0;
+    const splitPenalty = isDyeSub && !isSelphy && isSplitPaper(s) ? (twoUp === true || a <= 60 ? -4 : 4) : 0;
     const score = scoreOf(s, 3) + splitPenalty;
     if (!best || score < best.score) best = { ...s, score };
   }
-  if (!best && /selphy|canon.*\bCP\s?\d{3,4}\b/i.test(printer)) {
+  if (!best && isSelphy) {
     // A Canon SELPHY Postcard sheet is 100 x 148 mm (4.4 mm shorter than 4x6 in = 101.6 x 152.4 mm).
-    // When the booth is set to 4x6 and the queue only lists Postcard, match it cleanly.
-    if (d && matchesDim(d, 5)) return { ...d, keep: true };
+    // When the booth is set to 4x6 and the queue only lists Postcard, match it cleanly (preferring borderless over bordered default).
+    if (d && matchesDim(d, 5)) {
+      const bl5 = betterBorderlessFor(5);
+      if (bl5) return { ...bl5, keep: false };
+      return { ...d, keep: true };
+    }
     for (const s of sizes) {
       if (!matchesDim(s, 5)) continue;
       const score = scoreOf(s, 5);
@@ -971,7 +1016,7 @@ export const WIN_EPSON_L8050_EXPANSION = {
   devmode: { size: 8192, driverVersion: 768, dmSize: 220, extra: 7972, level: 7940, method: 7942 }
 };
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [switch]$DyeSub, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [string]$MediaType = '', [switch]$Borderless, [switch]$DyeSub, [switch]$Selphy, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0, [double]$EpsonScale = 0)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -1132,7 +1177,7 @@ if ($CustomW -gt 0 -and $CustomH -gt 0 -and -not $PaperName) {
 # that paper (Epson L-series keep it as a separate switch, off unless someone ticked it in the printer's preferences,
 # and with it off the page is fitted inside a ~3 mm margin: white edges). Only if the driver lists a Borderless
 # option and accepts it on this paper; otherwise nothing changes.
-if ($Borderless -and -not $DyeSub) {
+$applyBorderlessTicket = {
   try {
     Add-Type -AssemblyName System.Printing
     Add-Type -AssemblyName ReachFramework
@@ -1156,9 +1201,9 @@ if ($Borderless -and -not $DyeSub) {
     $bf = $bx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']")
     $bcx = [xml]([IO.StreamReader]::new($bq.GetPrintCapabilitiesAsXml()).ReadToEnd())
     $bhas = $bcx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option' and @name='psk:Borderless']")
-    if ($bf -and $bhas -and $bf.GetAttribute('name') -ne 'psk:Borderless') {
-      $bf.SetAttribute('name', 'psk:Borderless')
-      $bd = New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($bx.OuterXml))))
+    if ($bhas -and (-not $bf -or $bf.GetAttribute('name') -ne 'psk:Borderless')) {
+      $bxml = if ($bf) { $bf.SetAttribute('name', 'psk:Borderless'); $bx.OuterXml } else { '<psf:PrintTicket xmlns:psf="http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework" xmlns:psk="http://schemas.microsoft.com/windows/2003/08/printing/printschemakeywords" version="1"><psf:Feature name="psk:PageBorderless"><psf:Option name="psk:Borderless"/></psf:Feature></psf:PrintTicket>' }
+      $bd = New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($bxml))))
       $bv = $bq.MergeAndValidatePrintTicket($bt, $bd).ValidatedPrintTicket
       $bvx = [xml]([IO.StreamReader]::new($bv.GetXmlStream()).ReadToEnd())
       $bvo = $bvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']")
@@ -1173,6 +1218,8 @@ if ($Borderless -and -not $DyeSub) {
     }
   } catch { [Console]::Out.WriteLine('info|borderless not set: ' + $_.Exception.Message) }
 }
+if ($Borderless -and -not $DyeSub) { & $applyBorderlessTicket }
+elseif ($Borderless -and $Selphy) { & $applyBorderlessTicket }
 # Epson L8050 driver, Borderless > Settings: Auto Expand (slider Min / Med / Std) or Retain Size. It decides how far the driver enlarges a
 # Borderless page, so the picture is drawn for the one that is set (see WIN_EPSON_L8050_EXPANSION). Read from the driver's own bytes of the
 # page settings, and only when their layout is the one it was measured on; otherwise the default (Auto Expand, Std) is assumed.
@@ -1368,6 +1415,7 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
       } catch { /* no default: the print goes out as before */ }
     }
     const isDyeSub = DYE_SUB.test(String(printer || ''));
+    const isSelphy = IS_SELPHY.test(String(printer || ''));
     if (IS_WIN) {
       // A renter's own size with no matching paper in the driver: ask for it as a custom size (hundredths of an inch).
       const customW = (custom && !pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.min(widthMm, heightMm) / 25.4 * 100) : 0;
@@ -1378,7 +1426,8 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
       const actualW = (!pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.min(widthMm, heightMm) / 25.4 * 100) : 0;
       const actualH = (!pick && fit !== 'width' && widthMm > 0 && heightMm > 0) ? Math.round(Math.max(widthMm, heightMm) / 25.4 * 100) : 0;
       const paperArg = (pick && (!pick.keep || pick.explicit)) ? pick.key : '';
-      const borderlessArg = !isDyeSub && !!((pick && (pick.borderless || !pick.explicit)) || (customW && customH));
+      // Cutter dye-sub printers (DNP, HiTi, Citizen...) keep private DEVMODE intact; Canon SELPHY Windows IPP/WSD queues need psk:Borderless explicitly enabled.
+      const borderlessArg = (!isDyeSub || isSelphy) && (opts.borderless !== false) && !!((pick && (pick.borderless || !pick.explicit)) || (customW && customH) || isSelphy);
       const w = getWinPrintWorker();
       let usedWarm = false;
       if (w) {
@@ -1392,6 +1441,7 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
             mediaType: reqMediaType || '',
             borderless: borderlessArg,
             dyeSub: isDyeSub,
+            selphy: isSelphy,
             customW,
             customH,
             actualW,
@@ -1411,7 +1461,7 @@ async function printPages(printer, pageItems, fit, widthMm, heightMm, quality, c
         await writeFile(list, files.join('\r\n'), 'utf8');
         const cust = (customW && customH) ? ['-CustomW', String(customW), '-CustomH', String(customH)] : [];
         const actual = (actualW && actualH) ? ['-ActualW', String(actualW), '-ActualH', String(actualH)] : [];
-        r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(paperArg ? ['-PaperName', paperArg] : []), ...(borderlessArg ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
+        r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(reqMediaType ? ['-MediaType', reqMediaType] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(isDyeSub ? ['-DyeSub'] : []), ...(isSelphy ? ['-Selphy'] : []), ...(paperArg ? ['-PaperName', paperArg] : []), ...(borderlessArg ? ['-Borderless'] : []), '-EpsonScale', String(WIN_EPSON_L3210_SCALE), ...cust, ...actual]);
       }
     } else {
       const scale = fit === 'width' ? 1 : await macBorderlessScale(printer, pick);
@@ -1546,8 +1596,30 @@ const isGoproDev = (d) => /gopro|\bhero\s?\d/i.test(String((d && d.name) || '') 
 const goproJson = (r) => { try { return r && r.status === 'OK' ? JSON.parse(r.body.toString('utf8')) : null; } catch { return null; } };
 const dslrPresent = (j) => !!(j && (j.open || (j.devices || []).some((d) => d.camera && !isGoproDev(d))));
 const WIN_LIBUSB = () => IS_WIN && !IS_MAC && !process.env.PB_CAMERA_WORKER;
-async function winUsbList() {
+const WIN_USB_MAKERS = new Map([[0x04a9, 'Canon'], [0x04b0, 'Nikon'], [0x054c, 'Sony']]);
+let winUsbLastScanAt = 0;
+let winUsbLastResult = null;
+const WIN_USB_BG_TTL_MS = 15000;
+async function winUsbList({ force = false } = {}) {
   if (!WIN_LIBUSB()) return null;
+  // Inside Electron, scan USB PTP devices inside an isolated utilityProcess so synchronous
+  // libusb_get_device_list() calls on slow/suspended Windows USB hubs can never block the main UI thread.
+  if (canScanUsbOffProcess()) {
+    const now = Date.now();
+    if (!force && winUsbLastScanAt && now - winUsbLastScanAt < WIN_USB_BG_TTL_MS) return winUsbLastResult;
+    winUsbLastScanAt = now;
+    try {
+      const scan = await scanUsbOffProcess({ platform: 'win32', readDescriptors: false, force, logger: log });
+      if (!scan.unavailable) {
+        if (!scan.ok) { winUsbLastResult = null; return null; }
+        const devices = (scan.ptp || []).map((e) => (WIN_USB_MAKERS.has(e.vendor)
+          ? { name: WIN_USB_MAKERS.get(e.vendor) + ' camera', maker: WIN_USB_MAKERS.get(e.vendor), camera: true }
+          : { name: 'USB camera ' + Number(e.vendor || 0).toString(16) + ':' + Number(e.product || 0).toString(16), maker: '', camera: false }));
+        winUsbLastResult = { devices, open: false, name: '' };
+        return winUsbLastResult;
+      }
+    } catch { return null; }
+  }
   try {
     const r = await (await macCam()).call('list', '');
     return goproJson(r);
@@ -1589,7 +1661,7 @@ async function camDispatch(cmd, arg, timeoutMs) {
       let present = false;
       try { present = dslrPresent(goproJson(await camRaw('list', '', 20000))); } catch { /* check WinUSB next */ }
       if (!present) {
-        const u = await winUsbList();
+        const u = await winUsbList({ force: true });
         present = dslrPresent(u);
       }
       if (!present) return gopro.call('open', arg);
@@ -1601,7 +1673,7 @@ async function camDispatch(cmd, arg, timeoutMs) {
     }
     const r = await camRaw('open', arg, timeoutMs);
     if (r.status === 'OK' || !WIN_LIBUSB()) return r;
-    const u = await winUsbList();
+    const u = await winUsbList({ force: true });
     if (!dslrPresent(u)) return r;
     const ur = await camCallMac('open', arg, timeoutMs);
     if (ur.status === 'OK') {
@@ -1620,9 +1692,15 @@ async function camDispatch(cmd, arg, timeoutMs) {
   }
   return camRaw(cmd, arg, timeoutMs);
 }
+let camListPending = null;
 function camCall(cmd, arg, timeoutMs) {
+  if (cmd === 'list' && !arg && camListPending) return camListPending;
   const job = cam.queue.then(() => camDispatch(cmd, arg, timeoutMs));
   cam.queue = job.catch(() => { });
+  if (cmd === 'list' && !arg) {
+    camListPending = job;
+    job.finally(() => { if (camListPending === job) camListPending = null; });
+  }
   return job;
 }
 // The DSLR camera part: the in-app code on a Mac, the PowerShell worker on Windows.
@@ -1917,7 +1995,10 @@ export async function handleHelper(req, path, search) {
         return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) }));
       }
       if (method === 'POST' && path === '/camera/movie/start') {
-        const outDir = typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : '';
+        const isGuestbook = search.get('dest') === 'guestbook';
+        const outDir = isGuestbook
+          ? join(tmpdir(), 'pb4u-vg-movie')
+          : (typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : '');
         if (!outDir) return json({ ok: false, code: 'NOFOLDER', error: 'Spin inbox folder is not configured yet.' }, 409);
         try { mkdirSync(outDir, { recursive: true }); } catch { /* ignore */ }
         movieState.active = true; movieState.state = 'recording'; movieState.startedAt = Date.now();
@@ -1931,7 +2012,8 @@ export async function handleHelper(req, path, search) {
         });
       }
       if (method === 'POST' && path === '/camera/movie/stop') {
-        const outDir = movieState.outDir || (typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : '');
+        const isGuestbook = search.get('dest') === 'guestbook';
+        const outDir = movieState.outDir || (isGuestbook ? join(tmpdir(), 'pb4u-vg-movie') : (typeof getSpinInboxDir === 'function' ? String(getSpinInboxDir() || '') : ''));
         if (!outDir) { movieState.active = false; movieState.state = 'idle'; return json({ ok: false, code: 'NOFOLDER', error: 'Spin inbox folder is not configured yet.' }, 409); }
         try { mkdirSync(outDir, { recursive: true }); } catch { /* ignore */ }
         movieState.state = 'downloading'; movieState.outDir = outDir;
@@ -2028,7 +2110,8 @@ export async function handleHelper(req, path, search) {
     const opts = {
       twoUp: typeof body.twoUp === 'boolean' ? body.twoUp : undefined,
       paperName: typeof body.paperName === 'string' ? body.paperName.slice(0, 120) : '',
-      mediaType: typeof body.mediaType === 'string' ? body.mediaType.slice(0, 120) : ''
+      mediaType: typeof body.mediaType === 'string' ? body.mediaType.slice(0, 120) : '',
+      borderless: typeof body.borderless === 'boolean' ? body.borderless : undefined
     };
     const dp = directTarget(name);
     const warnings = [];
@@ -2110,9 +2193,11 @@ export async function handleHelper(req, path, search) {
   return json({ ok: false, error: 'Not found' }, 404);
 }
 export function stopHelper() {
+  clearWarmTimers();
+  try { stopUsbEnum(); } catch { /* ignore */ }
   try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
   try { if (winPrintWorker) { winPrintWorker.stop(); winPrintWorker = null; } } catch { /* ignore */ }
   gopro.reset().catch(() => { });
   if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }
-export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, decodePpdString, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, pickDyeSubCupsCutOption, isAirPrintFromInfo, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, refreshUsbDirect, installedAs, usbDirect, hotFolderStore, PAPER_CACHE, CAPS_CACHE };
+export const _helperTest = { pickPaper, sizeFromName, formatCapsLabel, pickGlossyMediaType, decodePpdString, parsePpdChoiceLabels, parseCupsOptionsOutput, pickCupsDriverQualityOptions, pickDyeSubCupsCutOption, isAirPrintFromInfo, MAC_EPSON_L8050_CHOICE_LABELS, isSplitPaperName, DYE_SUB, IS_SELPHY, refreshUsbDirect, installedAs, usbDirect, hotFolderStore, PAPER_CACHE, CAPS_CACHE };

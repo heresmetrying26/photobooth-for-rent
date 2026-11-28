@@ -18,8 +18,10 @@ export const HOTSPOT_IP = '192.168.137.1';   // where Windows puts the laptop on
 let log = (m) => console.log('[hotspot] ' + m);
 let cfgStore = { get: () => ({}), save: () => {} };
 const st = { busy: false, error: '', needsSetup: false, started: false, fails: 0,
-  driverUnsupported: false };   // Option 4: set true when this laptop can't (or must not) host
+  driverUnsupported: false, clients: 0, maxClients: 8, venueWifi: '' };   // Option 4: set true when this laptop can't (or must not) host
 let keepTimer = null;
+let keepTick = 0;
+let offlineCheck = () => true;
 // main.mjs passes this in: the page is told when the hotspot changes, so it does not have to keep asking.
 let notify = () => {};
 function ping() { try { notify(hotspotInfo()); } catch { /* ignore */ } }
@@ -64,7 +66,7 @@ export function hotspotTouch() {
 
 // ---------- the PowerShell that talks to Windows ----------
 // (No backticks, ${ or backslashes in here: it is a raw template string.)
-const TETHER_PS = String.raw`param([string]$Mode, [string]$Ssid, [string]$Pass)
+const TETHER_PS = String.raw`param([string]$Mode, [string]$Ssid, [string]$Pass, [switch]$PreferOffline)
 $ErrorActionPreference = 'Stop'
 function Say($o) { [Console]::Out.WriteLine(($o | ConvertTo-Json -Compress)) }
 try {
@@ -84,8 +86,33 @@ try {
     $t = $asAct.Invoke($null, @($act))
     if (-not $t.Wait(40000)) { throw 'timed-out' }
   }
+  function GetVenueWifi {
+    try {
+      $wi = (& netsh wlan show interfaces 2>$null) -join [Environment]::NewLine
+      if ($wi -match '(?m)^\s*State\s*:\s*connected\b' -and $wi -match '(?m)^\s*SSID\s*:\s*(.+?)\s*$') { return $Matches[1].Trim() }
+    } catch { }
+    return ''
+  }
+  $script:usingLoopback = $false
   function GetMgr {
     $mgrType = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]
+    if ($PreferOffline) {
+      try {
+        $lbIds = @(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'photobooth4u Loopback' -or $_.InterfaceDescription -like '*KM-TEST Loopback*' } | ForEach-Object { ([string]$_.InterfaceGuid).Trim('{}').ToLowerInvariant() })
+        if ($lbIds.Count -gt 0) {
+          foreach ($q in [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles()) {
+            try {
+              $aid = ([string]$q.NetworkAdapter.NetworkAdapterId).Trim('{}').ToLowerInvariant()
+              if ($lbIds -contains $aid) {
+                $mgr = $mgrType::CreateFromConnectionProfile($q)
+                $script:usingLoopback = $true
+                return $mgr
+              }
+            } catch { }
+          }
+        }
+      } catch { }
+    }
     $p = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()
     if ($p -ne $null) { return $mgrType::CreateFromConnectionProfile($p) }
     foreach ($q in [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles()) {
@@ -96,7 +123,8 @@ try {
   $opResult = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringOperationResult, Windows.Networking.NetworkOperators, ContentType=WindowsRuntime]
   if ($Mode -eq 'status') {
     $m = GetMgr
-    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount }
+    $mc = 8; try { $mc = [int]$m.MaxClientCount } catch { }
+    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; venueWifi = (GetVenueWifi) }
   }
   elseif ($Mode -eq 'stop') {
     try {
@@ -111,20 +139,24 @@ try {
     $m = GetMgr
     $cfg = $m.GetCurrentAccessPointConfiguration()
     $same = ($cfg.Ssid -eq $Ssid -and $cfg.Passphrase -eq $Pass)
-    if ($m.TetheringOperationalState -eq 'On' -and $same) { Say @{ ok = $true; state = 'On'; already = $true }; exit 0 }
+    $mc = 8; try { $mc = [int]$m.MaxClientCount } catch { }
+    if ($m.TetheringOperationalState -eq 'On' -and $same) { Say @{ ok = $true; state = 'On'; already = $true; clients = [int]$m.ClientCount; maxClients = $mc; venueWifi = (GetVenueWifi) }; exit 0 }
     if ($m.TetheringOperationalState -eq 'On') { $null = AwaitOp ($m.StopTetheringAsync()) $opResult }
     $cfg.Ssid = $Ssid
     $cfg.Passphrase = $Pass
     $band = 'TwoPointFourGigahertz'
-    try {
-      $wi = (& netsh wlan show interfaces 2>$null) -join [Environment]::NewLine
-      if (($wi -match 'State\s*:\s*connected' -and $wi -match 'Channel\s*:\s*(\d+)' -and [int]$Matches[1] -gt 14) -or ($wi -match ':\s*[56]\s*GHz')) { $band = 'Auto' }
-    } catch { }
+    $vWifi = GetVenueWifi
+    if (-not ($PreferOffline -and $script:usingLoopback -and -not $vWifi)) {
+      try {
+        $wi = (& netsh wlan show interfaces 2>$null) -join [Environment]::NewLine
+        if (($wi -match 'State\s*:\s*connected' -and $wi -match 'Channel\s*:\s*(\d+)' -and [int]$Matches[1] -gt 14) -or ($wi -match ':\s*[56]\s*GHz')) { $band = 'Auto' }
+      } catch { }
+    }
     try { $cfg.Band = $band } catch { }
     AwaitAct ($m.ConfigureAccessPointAsync($cfg))
     $r = AwaitOp ($m.StartTetheringAsync()) $opResult
     if ($r.Status -ne 'Success') { throw ('start-failed ' + $r.Status + ' ' + $r.AdditionalErrorMessage) }
-    Say @{ ok = $true; state = [string]$m.TetheringOperationalState }
+    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; venueWifi = $vWifi }
   }
   else { Say @{ ok = $false; error = 'unknown mode' } }
 } catch {
@@ -240,7 +272,7 @@ function lastJson(text) {
   for (let i = lines.length - 1; i >= 0; i--) { try { return JSON.parse(lines[i]); } catch { /* next */ } }
   return null;
 }
-async function tether(mode, ssid, pass, timeout) {
+async function tether(mode, ssid, pass, timeout, preferOffline = false) {
   let dir = '';
   try {
     dir = mkdtempSync(join(tmpdir(), 'pb4u-hotspot-'));
@@ -248,7 +280,7 @@ async function tether(mode, ssid, pass, timeout) {
     writeFileSync(ps1, '﻿' + TETHER_PS);
     // The name and password go over as base64 so any character (a leading "-", quotes, spaces) arrives unchanged.
     const b64 = (s) => Buffer.from(String(s), 'utf8').toString('base64');
-    const r = await runPs([...PS, '-File', ps1, '-Mode', mode, ...(ssid ? ['-Ssid', b64(ssid), '-Pass', b64(pass)] : [])], timeout);
+    const r = await runPs([...PS, '-File', ps1, '-Mode', mode, ...(ssid ? ['-Ssid', b64(ssid), '-Pass', b64(pass)] : []), ...(preferOffline ? ['-PreferOffline'] : [])], timeout);
     return lastJson(r.out) || { ok: false, error: (r.err || r.out || 'no answer').trim().slice(0, 300) };
   } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
   finally { if (dir) { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } } }
@@ -316,9 +348,10 @@ export function hotspotUp() {
 }
 
 // ---------- what main.mjs uses ----------
-export function initHotspot({ get, save, logger, dir, onChange, skipAuto }) {
+export function initHotspot({ get, save, logger, dir, onChange, skipAuto, isOffline }) {
   if (logger) log = logger;
   if (typeof onChange === 'function') notify = onChange;
+  if (typeof isOffline === 'function') offlineCheck = isOffline;
   cfgStore = { get, save };
   const c = get();
   // A name and password made once per laptop (not one shared by every booth).
@@ -377,9 +410,11 @@ export function initHotspot({ get, save, logger, dir, onChange, skipAuto }) {
 
 export function hotspotInfo() {
   const c = cfgStore.get();
+  const up = (IS_WIN || IS_MAC) && hotspotUp();
   return {
     supported: IS_WIN || IS_MAC, ssid: c.ssid || '', pass: c.pass || '', auto: !!c.auto,
-    on: (IS_WIN || IS_MAC) && hotspotUp(), wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup,
+    on: up, wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup,
+    clients: up ? (st.clients || 0) : 0, maxClients: st.maxClients || 8, venueWifi: up ? (st.venueWifi || '') : '',
     // Windows applies the name and password itself, so the operator can choose them. On a Mac, Internet Sharing keeps
     // its own name and password (System Settings → Sharing → Wi-Fi Options), so the app doesn't know the real ones.
     canCustom: IS_WIN, external: IS_MAC, driverUnsupported: !!st.driverUnsupported
@@ -470,9 +505,14 @@ export async function hotspotStart() {
 
   try {
     markStart();
-    const r = await tether('start', c.ssid, c.pass, 70000);
+    const preferOffline = !!(typeof offlineCheck === 'function' && offlineCheck());
+    const r = await tether('start', c.ssid, c.pass, 70000, preferOffline);
     if (r.ok) {
-      st.started = true; st.fails = 0; log('on: ' + c.ssid);
+      st.started = true; st.fails = 0;
+      if (typeof r.clients === 'number') st.clients = r.clients;
+      if (typeof r.maxClients === 'number' && r.maxClients > 0) st.maxClients = r.maxClients;
+      st.venueWifi = typeof r.venueWifi === 'string' ? r.venueWifi : '';
+      log('on: ' + c.ssid + (st.venueWifi ? ' (warning: also connected to venue Wi-Fi "' + st.venueWifi + '")' : ''));
       if (c.crashes) { c.crashes = 0; cfgStore.save(); }
     }
     else {
@@ -574,25 +614,47 @@ export function hotspotStopOnQuit() {
   } catch { /* ignore */ }
 }
 
-// Windows & Mac keepalive: if the hotspot goes off while wanted, start it again.
+// Windows & Mac keepalive: if the hotspot goes off while wanted, start it again quickly (15 s),
+// and poll connected guest count + venue Wi-Fi conflicts every 30 s while active on Windows.
 let lastUp = false;
+let statusPolling = false;
 function keepAlive() {
   if ((!IS_WIN && !IS_MAC) || keepTimer) return;
   keepTimer = setInterval(() => {
     const c = cfgStore.get();
+    keepTick++;
     // Tell the page when the hotspot went on or off by itself (reading the network list costs nothing).
     const up = hotspotUp();
-    if (up !== lastUp) { lastUp = up; ping(); }
-    // Skip completely if not wanted, busy, locked, already up, or the fail cap is reached
-    // (Option 4: stop hammering a broken driver).
-    if (!c.on || st.busy || st.driverUnsupported || st.fails >= 2 || up) return;
+    if (up !== lastUp) {
+      lastUp = up;
+      if (!up) { st.clients = 0; st.venueWifi = ''; }
+      ping();
+    }
+    if (!c.on || st.busy || st.driverUnsupported || st.fails >= 2) return;
+    if (up) {
+      if (IS_WIN && !statusPolling && (keepTick % 2 === 0)) {
+        statusPolling = true;
+        const preferOffline = !!(typeof offlineCheck === 'function' && offlineCheck());
+        tether('status', '', '', 12000, preferOffline).then((r) => {
+          if (!r || !r.ok) return;
+          const nextClients = typeof r.clients === 'number' ? r.clients : st.clients;
+          const nextMax = (typeof r.maxClients === 'number' && r.maxClients > 0) ? r.maxClients : st.maxClients;
+          const nextVenue = typeof r.venueWifi === 'string' ? r.venueWifi : st.venueWifi;
+          if (nextClients !== st.clients || nextMax !== st.maxClients || nextVenue !== st.venueWifi) {
+            st.clients = nextClients; st.maxClients = nextMax; st.venueWifi = nextVenue;
+            ping();
+          }
+        }).catch(() => {}).finally(() => { statusPolling = false; });
+      }
+      return;
+    }
     // IDLE RULE: never restart before the first photo session or Print Station activity has happened.
     if (!hasSession) return;
     // IDLE RULE: keep hotspot alive through multi-hour events & dinner breaks (up to 4 hours since last session/print).
     if (Date.now() - lastSession > 4 * 60 * 60 * 1000) return;
     log('hotspot went off during active event - restarting');
     hotspotStart().catch(() => {});
-  }, 60000);   // 60 s check (was 20 s)
+  }, 15000);   // 15 s check for fast recovery from weak-venue-Wi-Fi drops
   if (keepTimer.unref) keepTimer.unref();
 }
 

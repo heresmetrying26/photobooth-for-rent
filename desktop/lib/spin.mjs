@@ -239,6 +239,130 @@ export async function findHwEncoder() {
   return null;
 }
 
+// Builds ffmpeg arguments for finalizing a DSLR Video Guestbook clip into a fast-starting, iPhone-safe 1080p H.264 MP4.
+export function buildGuestbookFfmpegArgs({ inputPath, audioPath = '', outPath, mirror = false, maxWidth = 1920, bitrate = 5000000, encoder = 'libx264', hasInputAudio = true }) {
+  const maxW = Math.max(480, Math.min(1920, Math.round(Number(maxWidth) || 1920)));
+  const bps = Math.max(1200000, Math.min(8000000, Math.round(Number(bitrate) || 5000000)));
+  const maxRate = Math.round(bps * 1.35);
+  const bufSize = Math.round(bps * 2);
+  const vfParts = [`scale='if(gt(iw,${maxW}),${maxW},trunc(iw/2)*2)':-2:flags=lanczos`];
+  if (mirror) vfParts.push('hflip');
+  vfParts.push('format=yuv420p');
+
+  const args = ['-hide_banner', '-y', '-i', inputPath];
+  if (audioPath) args.push('-i', audioPath);
+  args.push('-map', '0:v:0');
+  if (audioPath) args.push('-map', '1:a:0');
+  else if (hasInputAudio) args.push('-map', '0:a:0?');
+  args.push('-vf', vfParts.join(','));
+
+  if (encoder === 'h264_nvenc') {
+    args.push('-c:v', 'h264_nvenc', '-preset', 'p4', '-rc', 'vbr', '-cq', '21', '-b:v', String(bps), '-maxrate', String(maxRate), '-bufsize', String(bufSize), '-pix_fmt', 'yuv420p');
+  } else if (encoder === 'h264_qsv') {
+    args.push('-c:v', 'h264_qsv', '-preset', 'veryfast', '-b:v', String(bps), '-maxrate', String(maxRate), '-bufsize', String(bufSize), '-pix_fmt', 'yuv420p');
+  } else if (encoder === 'h264_amf') {
+    args.push('-c:v', 'h264_amf', '-quality', 'speed', '-b:v', String(bps), '-maxrate', String(maxRate), '-bufsize', String(bufSize), '-pix_fmt', 'yuv420p');
+  } else if (encoder === 'h264_videotoolbox') {
+    args.push('-c:v', 'h264_videotoolbox', '-b:v', String(bps), '-maxrate', String(maxRate), '-allow_sw', '1', '-pix_fmt', 'yuv420p');
+  } else {
+    args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-maxrate', String(maxRate), '-bufsize', String(bufSize), '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p');
+  }
+
+  if (audioPath || hasInputAudio) {
+    args.push('-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100');
+    if (audioPath) args.push('-shortest');
+  } else {
+    args.push('-an');
+  }
+  args.push('-movflags', '+faststart', outPath);
+  return args;
+}
+
+// Finalizes a native DSLR movie (.MOV / .MP4) captured for Video Guestbook into a crisp, web/iPhone-ready 1080p MP4.
+export async function finalizeGuestbookVideo({ moviePath, audioBytes = null, audioExt = '.webm', mirror = false, maxWidth = 1920, bitrate = 5000000 } = {}) {
+  const src = String(moviePath || '').trim();
+  if (!src || !existsSync(src)) return { ok: false, error: 'Recorded DSLR video file was not found.' };
+  const bin = await findFfmpeg();
+  if (!bin) return { ok: false, error: 'FFmpeg is not available on this laptop.' };
+
+  const workDir = join(os.tmpdir(), 'pb4u-vg-work');
+  mkdirSync(workDir, { recursive: true });
+  const stamp = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const outPath = join(workDir, 'vg-' + stamp + '.mp4');
+  let audioPath = '';
+  try {
+    const info = await probe(src).catch(() => ({ width: 1920, height: 1080, duration: 0, hasAudio: true }));
+    if (audioBytes && (audioBytes.byteLength || audioBytes.length)) {
+      const ext = /^\.[a-z0-9]{2,5}$/i.test(String(audioExt || '')) ? String(audioExt) : '.webm';
+      audioPath = join(workDir, 'vg-mic-' + stamp + ext);
+      writeFileSync(audioPath, Buffer.from(audioBytes));
+    }
+    const hw = await findHwEncoder();
+    const encoders = hw ? [hw, 'libx264'] : ['libx264'];
+    let usedEncoder = 'libx264';
+    let lastErr = '';
+    for (const enc of encoders) {
+      const args = buildGuestbookFfmpegArgs({
+        inputPath: src,
+        audioPath,
+        outPath,
+        mirror: !!mirror,
+        maxWidth,
+        bitrate,
+        encoder: enc,
+        hasInputAudio: info.hasAudio !== false
+      });
+      const r = await run(bin, args, { timeout: 180000 });
+      if (r.code === 0 && existsSync(outPath) && statSync(outPath).size > 2048) {
+        usedEncoder = enc;
+        break;
+      }
+      lastErr = (r.err || '').slice(-240);
+      try { if (existsSync(outPath)) unlinkSync(outPath); } catch { /* ignore */ }
+    }
+    if (audioPath && (!existsSync(outPath) || statSync(outPath).size <= 2048)) {
+      // If optional laptop mic capture was corrupt/empty, retry once with the camera's own audio so the guest never loses their clip.
+      const fallbackArgs = buildGuestbookFfmpegArgs({
+        inputPath: src,
+        audioPath: '',
+        outPath,
+        mirror: !!mirror,
+        maxWidth,
+        bitrate,
+        encoder: 'libx264',
+        hasInputAudio: info.hasAudio !== false
+      });
+      const rf = await run(bin, fallbackArgs, { timeout: 180000 });
+      if (rf.code === 0 && existsSync(outPath) && statSync(outPath).size > 2048) {
+        usedEncoder = 'libx264';
+      } else {
+        lastErr = (rf.err || lastErr || '').slice(-240);
+        try { if (existsSync(outPath)) unlinkSync(outPath); } catch { /* ignore */ }
+      }
+    }
+    if (!existsSync(outPath) || statSync(outPath).size <= 2048) {
+      return { ok: false, error: 'Could not prepare HD video' + (lastErr ? ': ' + lastErr : '.') };
+    }
+    const bytes = readFileSync(outPath);
+    const outInfo = await probe(outPath).catch(() => info);
+    return {
+      ok: true,
+      bytes: new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+      size: bytes.length,
+      width: outInfo.width || info.width || 1920,
+      height: outInfo.height || info.height || 1080,
+      duration: outInfo.duration || info.duration || 0,
+      encoder: usedEncoder
+    };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  } finally {
+    try { if (existsSync(outPath)) unlinkSync(outPath); } catch { /* ignore */ }
+    try { if (audioPath && existsSync(audioPath)) unlinkSync(audioPath); } catch { /* ignore */ }
+    try { if (existsSync(src) && src.includes('pb4u-vg-movie')) unlinkSync(src); } catch { /* ignore */ }
+  }
+}
+
 // ---------- the ffmpeg command ----------
 export const SPEEDS = ['normal', 'slow', 'ramp', 'boomerang', 'custom'];
 const REVERSE_MAX = 8;                       // a sequence up to twice this many seconds can also play backwards (held in memory)

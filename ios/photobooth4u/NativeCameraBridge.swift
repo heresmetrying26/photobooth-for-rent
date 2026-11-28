@@ -238,6 +238,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private let sessionQueue = DispatchQueue(label: "com.photobooth4u.avcam.session", qos: .userInitiated)
     private let videoOutputQueue = DispatchQueue(label: "com.photobooth4u.avcam.video", qos: .userInitiated)
     private let audioOutputQueue = DispatchQueue(label: "com.photobooth4u.avcam.audio", qos: .userInitiated)
+    private let recordingQueue = DispatchQueue(label: "com.photobooth4u.avcam.record", qos: .userInitiated)
 
     private var currentInput: AVCaptureDeviceInput?
     private var currentDevice: AVCaptureDevice?
@@ -289,6 +290,8 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var recFilter: String = "none"
     private var recSoftSkin: Bool = false
     private var isRecordingVideo: Bool = false
+    private var recFrameInFlight: Bool = false
+    private var recDirectPassthrough: Bool = false
 
     private let shotsLock = NSLock()
     private var shotSeq = 0
@@ -298,6 +301,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
     private var pendingPhotoCompletions: [Int64: (Result<(Data, Int, Int), Error>) -> Void] = [:]
 
     private let frameCiContext = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
+    private let recCiContext = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
     private let recFilterChain = LiveFilterChain()
 
     private override init() {
@@ -1362,7 +1366,9 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             previewView.renderFiltered(pixelBuffer: pb, rotationAngle: rot, mirrored: mir, filter: filter, softSkin: soft)
         }
 
-        // Write filtered/mirrored video frames directly into AVAssetWriter when Video Guestbook is recording.
+        // Write filtered/mirrored video frames into AVAssetWriter when Video Guestbook is recording.
+        // Zero-copy raw YUV passthrough when unmirrored & unfiltered at native size; otherwise offload GPU render onto
+        // dedicated recordingQueue with a non-blocking drop guard so videoOutputQueue and live preview never lag.
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         recLock.lock()
         let activeRec = isRecordingVideo
@@ -1376,48 +1382,80 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         let rMir = recMirror
         let rFilter = recFilter
         let rSoft = recSoftSkin
+        let directPass = recDirectPassthrough
+        let busyFrame = recFrameInFlight
+        let canDispatch = activeRec && writer != nil && vIn != nil && adaptor != nil && rw > 1 && rh > 1 && !directPass && !busyFrame && !(started && lastPts.isValid && CMTimeSubtract(pts, lastPts).seconds < 0.029)
+        if canDispatch {
+            recFrameInFlight = true
+        }
         recLock.unlock()
 
-        guard activeRec, let aw = writer, let vidIn = vIn, let pixAdaptor = adaptor, rw > 1, rh > 1 else { return }
+        guard activeRec, let aw = writer, let vidIn = vIn, rw > 1, rh > 1 else { return }
         if started && lastPts.isValid && CMTimeSubtract(pts, lastPts).seconds < 0.029 { return }
-        guard aw.status == .writing, vidIn.isReadyForMoreMediaData, let pool = pixAdaptor.pixelBufferPool else { return }
 
-        var outPb: CVPixelBuffer?
-        let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &outPb)
-        guard status == kCVReturnSuccess, let dstPb = outPb else { return }
-
-        autoreleasepool {
-            let targetRect = CGRect(x: 0, y: 0, width: rw, height: rh)
-            var img = Self.orientImage(CIImage(cvPixelBuffer: pb), rotationAngle: rot)
-            let sx = targetRect.width / max(1, img.extent.width)
-            let sy = targetRect.height / max(1, img.extent.height)
-            img = img
-                .transformed(by: CGAffineTransform(translationX: -img.extent.origin.x, y: -img.extent.origin.y))
-                .transformed(by: CGAffineTransform(scaleX: sx, y: sy))
-                .cropped(to: targetRect)
-            if rMir {
-                img = img.oriented(.upMirrored)
-            }
-            img = recFilterChain.apply(to: img, filter: rFilter, softSkin: rSoft)
-            jpegEncodeLock.lock()
-            frameCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: Self.srgbColorSpace)
-            jpegEncodeLock.unlock()
-        }
-
-        recLock.lock()
-        if isRecordingVideo && assetWriter === aw && aw.status == .writing {
-            if !recSessionStarted {
-                aw.startSession(atSourceTime: pts)
-                recSessionStarted = true
-                recFirstPts = pts
-            }
-            if vidIn.isReadyForMoreMediaData {
-                if pixAdaptor.append(dstPb, withPresentationTime: pts) {
+        if directPass {
+            recLock.lock()
+            if isRecordingVideo && assetWriter === aw && aw.status == .writing {
+                if !recSessionStarted {
+                    aw.startSession(atSourceTime: pts)
+                    recSessionStarted = true
+                    recFirstPts = pts
+                }
+                if vidIn.isReadyForMoreMediaData && vidIn.append(sampleBuffer) {
                     recLastVideoPts = pts
                 }
             }
+            recLock.unlock()
+            return
         }
-        recLock.unlock()
+
+        guard canDispatch, let pixAdaptor = adaptor else { return }
+
+        recordingQueue.async { [weak self] in
+            guard let self = self else { return }
+            defer {
+                self.recLock.lock()
+                self.recFrameInFlight = false
+                self.recLock.unlock()
+            }
+            guard aw.status == .writing, vidIn.isReadyForMoreMediaData, let pool = pixAdaptor.pixelBufferPool else { return }
+            var outPb: CVPixelBuffer?
+            let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &outPb)
+            guard status == kCVReturnSuccess, let dstPb = outPb else { return }
+
+            autoreleasepool {
+                let targetRect = CGRect(x: 0, y: 0, width: rw, height: rh)
+                var img = Self.orientImage(CIImage(cvPixelBuffer: pb), rotationAngle: rot)
+                let sx = targetRect.width / max(1, img.extent.width)
+                let sy = targetRect.height / max(1, img.extent.height)
+                img = img
+                    .transformed(by: CGAffineTransform(translationX: -img.extent.origin.x, y: -img.extent.origin.y))
+                    .transformed(by: CGAffineTransform(scaleX: sx, y: sy))
+                    .cropped(to: targetRect)
+                if rMir {
+                    img = img.oriented(.upMirrored)
+                }
+                if rFilter != "none" || rSoft {
+                    img = self.recFilterChain.apply(to: img, filter: rFilter, softSkin: rSoft)
+                }
+                self.recCiContext.render(img, to: dstPb, bounds: targetRect, colorSpace: Self.srgbColorSpace)
+            }
+
+            self.recLock.lock()
+            if self.isRecordingVideo && self.assetWriter === aw && aw.status == .writing {
+                if !self.recSessionStarted {
+                    aw.startSession(atSourceTime: pts)
+                    self.recSessionStarted = true
+                    self.recFirstPts = pts
+                }
+                if vidIn.isReadyForMoreMediaData {
+                    if pixAdaptor.append(dstPb, withPresentationTime: pts) {
+                        self.recLastVideoPts = pts
+                    }
+                }
+            }
+            self.recLock.unlock()
+        }
     }
 
     func latestFrameJpeg(maxSide: CGFloat = 640, quality: CGFloat = 0.74) -> Data? {
@@ -1855,41 +1893,63 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             self.stateLock.lock()
             let curW = self.currentWidth
             let curH = self.currentHeight
+            let rotAngle = self.captureRotationAngle
+            let rawBufW = self.latestBuffer.map { CVPixelBufferGetWidth($0) } ?? 0
+            let rawBufH = self.latestBuffer.map { CVPixelBufferGetHeight($0) } ?? 0
             self.stateLock.unlock()
 
             let sw = curW > 0 ? curW : 1280
             let sh = curH > 0 ? curH : 720
-            let cap = max(480, maxWidth)
+            let lowRamCap = NativeCameraBridge.isLowRamDevice ? min(maxWidth, 1440) : maxWidth
+            let cap = max(480, lowRamCap)
             let longest = max(sw, sh)
             let scale = longest > cap ? Double(cap) / Double(longest) : 1.0
             let rw = max(2, (Int((Double(sw) * scale).rounded()) / 2) * 2)
             let rh = max(2, (Int((Double(sh) * scale).rounded()) / 2) * 2)
+            let cleanFilter = filter.isEmpty ? "none" : filter
+            let canPassthrough = !mirror && cleanFilter == "none" && !softSkin && rawBufW > 0 && rawBufH > 0 && rawBufW % 2 == 0 && rawBufH % 2 == 0 && abs(scale - 1.0) < 0.001
 
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("pb4u-vg-\(UUID().uuidString).mp4")
             try? FileManager.default.removeItem(at: url)
 
             do {
                 let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+                writer.shouldOptimizeForNetworkUse = true
+                let encW = canPassthrough ? rawBufW : rw
+                let encH = canPassthrough ? rawBufH : rh
                 let vSettings: [String: Any] = [
                     AVVideoCodecKey: AVVideoCodecType.h264,
-                    AVVideoWidthKey: rw,
-                    AVVideoHeightKey: rh,
+                    AVVideoWidthKey: encW,
+                    AVVideoHeightKey: encH,
                     AVVideoCompressionPropertiesKey: [
-                        AVVideoAverageBitRateKey: max(600_000, bitrate),
+                        AVVideoAverageBitRateKey: max(1_200_000, bitrate),
                         AVVideoExpectedSourceFrameRateKey: 30,
-                        AVVideoMaxKeyFrameIntervalKey: 30
+                        AVVideoMaxKeyFrameIntervalKey: 30,
+                        AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
+                        AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC
                     ]
                 ]
                 let vIn = AVAssetWriterInput(mediaType: .video, outputSettings: vSettings)
                 vIn.expectsMediaDataInRealTime = true
+                if canPassthrough {
+                    let deg = ((Int(rotAngle.rounded()) % 360) + 360) % 360
+                    if deg != 0 {
+                        vIn.transform = CGAffineTransform(rotationAngle: CGFloat(deg) * .pi / 180.0)
+                    }
+                }
 
-                let adaptorAttrs: [String: Any] = [
-                    kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
-                    kCVPixelBufferWidthKey as String: rw,
-                    kCVPixelBufferHeightKey as String: rh,
-                    kCVPixelBufferMetalCompatibilityKey as String: true
-                ]
-                let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: vIn, sourcePixelBufferAttributes: adaptorAttrs)
+                let adaptor: AVAssetWriterInputPixelBufferAdaptor?
+                if canPassthrough {
+                    adaptor = nil
+                } else {
+                    let adaptorAttrs: [String: Any] = [
+                        kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
+                        kCVPixelBufferWidthKey as String: rw,
+                        kCVPixelBufferHeightKey as String: rh,
+                        kCVPixelBufferMetalCompatibilityKey as String: true
+                    ]
+                    adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: vIn, sourcePixelBufferAttributes: adaptorAttrs)
+                }
 
                 guard writer.canAdd(vIn) else {
                     throw NSError(domain: "NativeCameraBridge", code: 500, userInfo: [NSLocalizedDescriptionKey: "Cannot configure video encoder."])
@@ -1902,7 +1962,7 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                         AVFormatIDKey: kAudioFormatMPEG4AAC,
                         AVSampleRateKey: 44100,
                         AVNumberOfChannelsKey: 1,
-                        AVEncoderBitRateKey: 64000
+                        AVEncoderBitRateKey: 128000
                     ]
                     let audioInputWriter = AVAssetWriterInput(mediaType: .audio, outputSettings: aSettings)
                     audioInputWriter.expectsMediaDataInRealTime = true
@@ -1929,8 +1989,10 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
                 self.recWidth = rw
                 self.recHeight = rh
                 self.recMirror = mirror
-                self.recFilter = filter.isEmpty ? "none" : filter
+                self.recFilter = cleanFilter
                 self.recSoftSkin = softSkin
+                self.recFrameInFlight = false
+                self.recDirectPassthrough = canPassthrough
                 self.isRecordingVideo = true
                 self.recLock.unlock()
 
@@ -1954,9 +2016,16 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
             let vIn = self.writerVideoInput
             let aIn = self.writerAudioInput
             let url = self.recFileURL
-            let started = self.recSessionStarted
-
             self.isRecordingVideo = false
+            self.recLock.unlock()
+
+            // Drain any in-flight GPU frame render before detaching writer and finalizing the MP4 container.
+            self.recordingQueue.sync {}
+
+            self.recLock.lock()
+            let started = self.recSessionStarted
+            self.recFrameInFlight = false
+            self.recDirectPassthrough = false
             self.assetWriter = nil
             self.writerVideoInput = nil
             self.writerAdaptor = nil
@@ -2020,6 +2089,14 @@ final class NativeCameraBridge: NSObject, AVCapturePhotoCaptureDelegate, AVCaptu
         let writer = assetWriter
         let url = recFileURL
         isRecordingVideo = false
+        recLock.unlock()
+
+        // Drain any in-flight GPU frame render before detaching and cancelling the AVAssetWriter.
+        recordingQueue.sync {}
+
+        recLock.lock()
+        recFrameInFlight = false
+        recDirectPassthrough = false
         assetWriter = nil
         writerVideoInput = nil
         writerAdaptor = nil

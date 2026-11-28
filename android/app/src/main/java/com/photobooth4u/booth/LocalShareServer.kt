@@ -161,7 +161,7 @@ class LocalShareServer(private val store: PBLocal) {
 
     private fun handle(s: Socket) {
         try {
-            s.soTimeout = 15000
+            s.soTimeout = 30000
             s.tcpNoDelay = true
             val input = BufferedInputStream(s.getInputStream())
             val out = BufferedOutputStream(s.getOutputStream(), 65536)
@@ -715,7 +715,11 @@ class LocalShareServer(private val store: PBLocal) {
                     Bitmap.createScaledBitmap(bmp, maxOf(1, Math.round(bmp.width * scale)), maxOf(1, Math.round(bmp.height * scale)), true)
                 } else bmp
                 tdir.mkdirs()
-                FileOutputStream(tf).use { small.compress(Bitmap.CompressFormat.JPEG, 72, it) }
+                val tmp = File(tdir, "${file.nameWithoutExtension}.tmp.${System.nanoTime()}")
+                FileOutputStream(tmp).use { small.compress(Bitmap.CompressFormat.JPEG, 72, it) }
+                if (!tmp.renameTo(tf)) {
+                    try { FileOutputStream(tf).use { small.compress(Bitmap.CompressFormat.JPEG, 72, it) } } finally { tmp.delete() }
+                }
                 if (small !== bmp) small.recycle()
                 bmp.recycle()
                 return tf

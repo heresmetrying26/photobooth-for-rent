@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   // This laptop's address for guests' phones (http://<ip>:<port>) or null when it isn't on a network.
   lanBase: () => ipcRenderer.sendSync('pb4u:lan'),
   localBase: () => ipcRenderer.sendSync('pb4u:localBase'),
+  graphicsInfo: () => ipcRenderer.invoke('pb4u:graphicsInfo'),
+  setSafeGraphics: (mode, restart) => ipcRenderer.invoke('pb4u:setSafeGraphics', String(mode || 'auto'), !!restart),
   // The Wi-Fi this laptop is on: { ssid, pass, open, passKnown } (ssid is '' when it isn't on Wi-Fi).
   wifi: (force) => ipcRenderer.invoke('pb4u:wifi', !!force),
   // The booth's own Wi-Fi (Windows): { supported, on, wanted, busy, ssid, pass, auto, error, needsSetup }
@@ -32,7 +34,10 @@ contextBridge.exposeInMainWorld('pb4u', {
   openPhotos: (folderUrl) => ipcRenderer.invoke('pb4u:openPhotos', folderUrl ? String(folderUrl) : ''),
   choosePhotos: () => ipcRenderer.invoke('pb4u:choosePhotos'),
   // Save a file the booth made (e.g. the Wi-Fi sign) with a Save As box: null when cancelled, else { ok, path, dir } / { ok:false, error }
-  saveFile: (name, bytes) => ipcRenderer.invoke('pb4u:saveFile', String(name || ''), bytes),  // 360 videos
+  saveFile: (name, bytes) => ipcRenderer.invoke('pb4u:saveFile', String(name || ''), bytes),
+  // Video Guestbook DSLR 1080p FFmpeg finalizer
+  vgFinalize: (req) => ipcRenderer.invoke('pb4u:vgFinalize', req || {}),
+  // 360 videos
   spinInfo: () => ipcRenderer.invoke('pb4u:spinInfo'),
   spinChoose: () => ipcRenderer.invoke('pb4u:spinChoose'),
   spinScan: () => ipcRenderer.invoke('pb4u:spinScan'),

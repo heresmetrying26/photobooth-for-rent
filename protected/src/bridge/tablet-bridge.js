@@ -337,7 +337,7 @@ async function captureTabletShot(index) {
       c.height = Math.round(sh * k);
       const ctx = c.getContext('2d');
       ctx.imageSmoothingQuality = 'high';
-      if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+      if (typeof mirrorOutput === 'function' ? mirrorOutput() : mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
       ctx.drawImage(bmp, 0, 0, sw, sh, 0, 0, c.width, c.height);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       finalizeShotCanvas(c, index);
@@ -466,12 +466,13 @@ async function buildAndPushTabletState() {
   } else if (welcome && attractMode !== 'video') {
     const slideList = attractPlaylist.length ? attractPlaylist : (attractPosterUrl ? [{ url: attractPosterUrl, type: attractPosterType }] : []);
     const curSlide = (attractMode === 'poster' && slideList.length) ? (slideList[attractPlayIndex] || slideList[0]) : null;
-    let rawWel = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w'))) ? curSlide.url : welcomeDataUrl;
+    const welSrc = (typeof welcomeGuestDataUrl === 'string' && welcomeGuestDataUrl) ? welcomeGuestDataUrl : welcomeDataUrl;
+    let rawWel = (curSlide && !welcomeBtnOn && !(typeof brandImgFor === 'function' && brandImgFor('w')) && !(typeof shouldUseWelcomeIconDock === 'function' && shouldUseWelcomeIconDock(false))) ? curSlide.url : welSrc;
     if (attractMode === 'card' && tabletBridge.viewport && tabletBridge.viewport.vw > 0 && tabletBridge.viewport.vh > 0 && typeof renderWelcomeForViewport === 'function') {
       const vp = tabletBridge.viewport;
       const vpAr = vp.vw / vp.vh;
       if (Math.abs(vpAr - welWa) / Math.max(0.2, welWa) > 0.04) {
-        const wKey = tabletPicSig(welcomeDataUrl) + ':' + vp.vw + 'x' + vp.vh;
+        const wKey = tabletPicSig(welSrc) + ':' + vp.vw + 'x' + vp.vh;
         if (!tabletBridge.welCache || tabletBridge.welCache.key !== wKey) {
           const rendered = renderWelcomeForViewport(vp.vw, vp.vh);
           if (rendered && rendered.dataUrl) {

@@ -136,6 +136,17 @@ export function allBridgeUrls(nets = networkInterfaces()) {
 function socketVia(socket) {
   return String((socket && socket.localAddress) || '').replace(/^::ffff:/, '');
 }
+function socketRemote(socket) {
+  return String((socket && socket.remoteAddress) || '').replace(/^::ffff:/, '');
+}
+export function hasHotspotBridgeClient() {
+  const isHs = (ip) => /^192\.168\.137\.(?!1$)\d+$/.test(ip);
+  if (camSocket && !camSocket.destroyed && isHs(socketRemote(camSocket))) return true;
+  for (const s of guestSockets) {
+    if (s && !s.destroyed && isHs(socketRemote(s))) return true;
+  }
+  return false;
+}
 
 export function getBridgeInfo() {
   const port = Number(cfg.getPort()) || 0;

@@ -195,6 +195,23 @@ class PBLocal {
         return rootDir.appendingPathComponent(folder.name)
     }
 
+    func photomanDirOf(folder: Folder) -> URL {
+        let pmRoot = rootDir.appendingPathComponent("Photoman")
+        if !folder.sub.isEmpty {
+            return pmRoot.appendingPathComponent(folder.name).appendingPathComponent(folder.sub)
+        }
+        return pmRoot.appendingPathComponent(folder.name)
+    }
+
+    private func photomanDirFor(dir: URL) -> URL? {
+        let rootPrefix = rootDir.standardizedFileURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/"
+        let dirPath = dir.standardizedFileURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard dirPath.hasPrefix(rootPrefix) else { return nil }
+        let rel = String(dirPath.dropFirst(rootPrefix.count))
+        guard !rel.isEmpty, !rel.hasPrefix("Photoman/") else { return nil }
+        return rootDir.appendingPathComponent("Photoman").appendingPathComponent(rel)
+    }
+
     func galleryTitle(folder: Folder) -> String {
         return folder.sub.isEmpty ? folder.name : "\(folder.name) · \(folder.sub)"
     }
@@ -215,18 +232,24 @@ class PBLocal {
 
     private let subdirs = ["Prints", "Solo Shots", "GIFs", "360 Videos"]
 
+    private func findInBase(_ baseDir: URL, name: String) -> URL? {
+        let direct = baseDir.appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: direct.path) { return direct }
+        let cat = baseDir.appendingPathComponent(categoryOf(name)).appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: cat.path) { return cat }
+        for sub in subdirs {
+            let p = baseDir.appendingPathComponent(sub).appendingPathComponent(name)
+            if FileManager.default.fileExists(atPath: p.path) { return p }
+        }
+        return nil
+    }
+
     func findFile(in dir: URL, name: String) -> URL? {
         guard !name.isEmpty, !name.hasPrefix("."), !name.contains("/"), !name.contains("\\"), !name.contains("..") else {
             return nil
         }
-        let direct = dir.appendingPathComponent(name)
-        if FileManager.default.fileExists(atPath: direct.path) { return direct }
-        let cat = dir.appendingPathComponent(categoryOf(name)).appendingPathComponent(name)
-        if FileManager.default.fileExists(atPath: cat.path) { return cat }
-        for sub in subdirs {
-            let p = dir.appendingPathComponent(sub).appendingPathComponent(name)
-            if FileManager.default.fileExists(atPath: p.path) { return p }
-        }
+        if let found = findInBase(dir, name: name) { return found }
+        if let pmDir = photomanDirFor(dir: dir), let found = findInBase(pmDir, name: name) { return found }
         return nil
     }
 
@@ -252,6 +275,9 @@ class PBLocal {
             }
         }
         scan(dir, rootLevel: true)
+        if let pmDir = photomanDirFor(dir: dir), FileManager.default.fileExists(atPath: pmDir.path) {
+            scan(pmDir, rootLevel: true)
+        }
 
         return out.sorted { u1, u2 in
             let d1 = (try? u1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
@@ -375,15 +401,26 @@ class PBLocal {
                 rawName += ".jpg"
             }
 
+            let isPhotoman = (dict["photoman"] as? Bool == true) ||
+                ((dict["photoman"] as? Int) == 1) ||
+                ((dict["photoman"] as? String) == "1") ||
+                ((dict["source"] as? String)?.lowercased() == "photoman")
+            let pmDir = photomanDirOf(folder: folder)
+            let baseDir = isPhotoman ? pmDir : dir
             let cat = categoryOf(rawName)
-            let targetDir = dir.appendingPathComponent(cat)
+            let targetDir = baseDir.appendingPathComponent(cat)
             try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
 
             var candidate = rawName
             var idx = 2
             lock.lock()
             while FileManager.default.fileExists(atPath: targetDir.appendingPathComponent(candidate).path) ||
-                  FileManager.default.fileExists(atPath: dir.appendingPathComponent(candidate).path) {
+                  FileManager.default.fileExists(atPath: baseDir.appendingPathComponent(candidate).path) ||
+                  FileManager.default.fileExists(atPath: dir.appendingPathComponent(candidate).path) ||
+                  FileManager.default.fileExists(atPath: dir.appendingPathComponent(cat).appendingPathComponent(candidate).path) ||
+                  FileManager.default.fileExists(atPath: pmDir.appendingPathComponent(candidate).path) ||
+                  FileManager.default.fileExists(atPath: pmDir.appendingPathComponent(cat).appendingPathComponent(candidate).path) ||
+                  findFile(in: dir, name: candidate) != nil {
                 let base = (rawName as NSString).deletingPathExtension
                 let ext = (rawName as NSString).pathExtension
                 candidate = "\(base) (\(idx)).\(ext)"

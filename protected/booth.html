@@ -25984,7 +25984,7 @@
               <ul>
                 <li><b>&ldquo;No internet connection&rdquo; prompt:</b> Tap <b>Stay connected</b> / <b>Keep trying Wi-Fi</b> &mdash; the phone is talking directly to the booth, so no internet is needed.</li>
                 <li><b>Mobile data taking over:</b> Turn <b>Mobile Data OFF</b> briefly (or <b>Airplane Mode ON &rarr; Wi-Fi ON</b>) so the phone opens the booth&rsquo;s local QR instead of cellular data.</li>
-                <li><b>Big crowds / weak venue Wi-Fi:</b> Disconnect the laptop from weak venue Wi-Fi while hosting Booth Wi-Fi so iPhones stay connected, or use an offline pocket router for 8+ phones at once.</li>
+                <li><b>Big crowds (8&ndash;20 phones) / weak venue Wi-Fi:</b> Click <b>Allow up to 20 phones</b> once to raise Windows&rsquo; 8-phone limit, keep <b>Auto-clear idle phones when full</b> ON so guests who finished downloading free up slots, and disconnect from weak venue Wi-Fi (or use a pocket router for 20+ phones all at once).</li>
               </ul>
               <p class="tb-g-foot"><a href="https://photobooth4u.netlify.app/how-to-offline-qr/" target="_blank" rel="noopener">Open full visual Offline QR &amp; Booth Wi-Fi guide ↗</a></p>
             </div>
@@ -25994,9 +25994,15 @@
                   needed)</span><input type="checkbox" id="deskHotspotOn"></label>
               <label class="switch-row"><span>Turn it on whenever the app opens</span><input type="checkbox"
                   id="deskHotspotAuto"></label>
+              <label class="switch-row" id="deskHotspotAutoRecycleRow" style="display:none;"><span>Auto-clear idle phones when full (prevents 8-phone lockup)</span><input type="checkbox"
+                  id="deskHotspotAutoRecycle"></label>
               <p class="panel-hint" id="deskHotspotHint" style="margin:6px 0 0;"></p>
               <div class="desk-row" id="deskHotspotSetupRow" style="display:none;"><button type="button"
                   class="action-btn" id="deskHotspotSetup" style="width:auto; margin:0;">Set up (one time)</button>
+              </div>
+              <div class="desk-row" id="deskHotspotCrowdRow" style="display:none; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" class="action-btn" id="deskHotspotBoost" style="display:none; width:auto; margin:0;">Allow up to 20 phones (1-time)</button>
+                <button type="button" class="action-btn" id="deskHotspotRecycle" style="display:none; width:auto; margin:0;">Clear idle phones</button>
               </div>
               <div id="deskHotspotCreds" style="display:none; margin-top:10px;">
                 <p class="sub-label" style="margin:0 0 4px;">Name and password for the booth Wi-Fi</p>
@@ -31818,15 +31824,21 @@
       // Desktop Online Mode: also save a local copy directly into Pictures/photobooth4u/<event>/
       // while uploading to Google Drive (so the operator gets both local copies and 7-day cloud QRs).
       var deskLocalBackupUrl = '';
+      var deskResultActive = false;
+      function isPhotomanSave() {
+        return !!(window._deskActiveCtx || deskResultActive);
+      }
       async function saveDesktopLocalCopy(blob, filename, dest) {
         if (!DESKTOP_ONLINE || !blob || typeof blob.arrayBuffer !== 'function') return false;
         try {
           const folderKey = dest ? dest.folderKey : rawFolderKey();
           const subfolder = dest ? dest.subfolder : driveSubfolder();
+          const isPhotoman = !!(dest && dest.photoman);
           const q = new URLSearchParams();
           q.set('filename', filename || '');
           if (folderKey) q.set('folderKey', folderKey);
           if (subfolder) q.set('subfolder', subfolder);
+          if (isPhotoman) q.set('photoman', '1');
           const r = await fetch('/local/drive?' + q.toString(), {
             method: 'POST',
             headers: { 'Content-Type': blob.type || 'application/octet-stream' },
@@ -31979,11 +31991,12 @@
         return data.ticket;
       }
 
-      // dest = { folderKey, subfolder } for photos queued earlier (they keep the
+      // dest = { folderKey, subfolder, photoman } for photos queued earlier (they keep the
       // folder they were taken for); left out = the folder set up right now.
       async function uploadToDrive(blob, filename, dest) {
         const folderKey = dest ? dest.folderKey : rawFolderKey();
         const subfolder = dest ? dest.subfolder : driveSubfolder();
+        const isPhotoman = !!(dest && dest.photoman);
         const isMaster = /_master\.png$/i.test(filename || '');   // the operator's lossless copy: belongs to no guest's page
         const guestCode = (!isMaster && (LOCALSHARE || outputMode === 'both') && (gvActive() || outputMode === 'both') && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined;
         let res;
@@ -31993,6 +32006,7 @@
           if (folderKey) q.set('folderKey', folderKey);
           if (subfolder) q.set('subfolder', subfolder);
           if (guestCode) q.set('guestCode', guestCode);
+          if (isPhotoman) q.set('photoman', '1');
           res = await driveFetch({
             method: 'POST',
             headers: { 'Content-Type': blob.type || 'application/octet-stream' },
@@ -32005,18 +32019,20 @@
           // request work cross-origin at all.
           const base64Data = await blobToBase64(blob);
           const ticket = await getUploadTicket(folderKey);
+          const payload = {
+            filename: filename,
+            mimeType: blob.type || 'image/png',
+            imageBase64: base64Data,
+            folderKey: folderKey,
+            subfolder: subfolder || undefined,
+            guestCode: guestCode,   // this file belongs to that guest's own page
+            ticket
+          };
+          if (LOCALSHARE && isPhotoman) payload.photoman = true;
           res = await driveFetch({
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              filename: filename,
-              mimeType: blob.type || 'image/png',
-              imageBase64: base64Data,
-              folderKey: folderKey,
-              subfolder: subfolder || undefined,
-              guestCode: guestCode,   // this file belongs to that guest's own page
-              ticket
-            })
+            body: JSON.stringify(payload)
           });
         }
         if (!res.ok) throw new Error('Drive upload failed (' + res.status + ')');
@@ -32293,7 +32309,7 @@
         if (key === 'myframe') return frameTier(typeof activeFrame === 'function' ? activeFrame() : null);
         if (/^sheet:/.test(key) || key === 'framesheet') return 'photo';
         var d = LAYOUT_DEFS[key];
-        if (!tierSplitOn()) return d && d.kind === 'receipt' ? 'receipt' : 'photo';   // switch off: the colour receipts count as receipt layouts, as before
+        if (!tierSplitOn()) return d && d.kind === 'receipt' && !d.color ? 'receipt' : 'photo';   // B&W receipts -> thermal roll; colour receipts stay colour on photo paper
         return d && d.tier ? d.tier : 'photo';
       }
       // The printer this device uses for a category (only when the switch is on, and only if this device has it).
@@ -34202,9 +34218,11 @@
         return /only use its own event folder|locked|trial-ended|expired|Could not get permission|ticket/i.test(m);
       }
       async function queueUpload(blob, filename, dest) {
+        const isPhotoman = !!(dest && dest.photoman);
         const item = {
-          id: dest.folderKey + '|' + (dest.subfolder || '') + '|' + filename,
+          id: dest.folderKey + '|' + (dest.subfolder || '') + '|' + (isPhotoman ? 'pm|' : '') + filename,
           blob: blob, filename: filename, folderKey: dest.folderKey, subfolder: dest.subfolder || '',
+          photoman: isPhotoman,
           t: Date.now(), error: ''
         };
         await dbDo('uploads', 'readwrite', st => st.put(item));
@@ -34245,7 +34263,7 @@
             if (it.error && !manual) continue;          // needs the operator's attention
             if (!LOCALSHARE && !navigator.onLine && !manual) break;
             try {
-              const r = await uploadToDrive(it.blob, it.filename, { folderKey: it.folderKey, subfolder: it.subfolder });
+              const r = await uploadToDrive(it.blob, it.filename, { folderKey: it.folderKey, subfolder: it.subfolder, photoman: !!it.photoman });
               _driveNetDownAt = 0;
               await dbDo('uploads', 'readwrite', st => st.delete(it.id));
               uploaded++;
@@ -34272,7 +34290,7 @@
         let saved = 0;
         for (const it of items) {
           let ok = false;
-          if (backupDir && backupOk) ok = await saveToBackupFolder(it.blob, it.filename);
+          if (backupDir && backupOk) ok = await saveToBackupFolder(it.blob, it.filename, { photoman: !!it.photoman });
           if (!ok) {
             const url = URL.createObjectURL(it.blob);
             const a = document.createElement('a'); a.href = url; a.download = it.filename; a.click();
@@ -34422,13 +34440,16 @@
         var n = String(filename || '');
         if (/\.(mp4|mov|webm)$/i.test(n) || /^360_|_360\./i.test(n)) return '360 Videos';
         if (/\.gif$/i.test(n) || /_gif\./i.test(n)) return 'GIFs';
-        if (/_solo_\d+/i.test(n) || /_solo\./i.test(n)) return 'Solo Shots';
+        if (/_solo_\d+/i.test(n)) return 'Solo Shots';
         return 'Prints';
       }
-      async function saveToBackupFolder(blob, filename) {
+      async function saveToBackupFolder(blob, filename, opts) {
         if (!backupDir || !backupOk) return false;
         try {
-          let dir = await backupDir.getDirectoryHandle(backupEventFolderName(), { create: true });
+          const isPhotoman = !!(opts && opts.photoman);
+          let base = backupDir;
+          if (isPhotoman) base = await base.getDirectoryHandle('Photoman', { create: true });
+          let dir = await base.getDirectoryHandle(backupEventFolderName(), { create: true });
           const sub = safeFileName(driveSubfolder());
           if (sub) dir = await dir.getDirectoryHandle(sub, { create: true });
           const cat = fileCategory(filename);
@@ -34528,7 +34549,8 @@
           shotCanvases.every(Boolean));
       }
 
-      async function uploadLayoutForQR(layoutKey, onRetry) {
+      async function uploadLayoutForQR(layoutKey, onRetry, opts) {
+        const isPhotoman = !!(opts && opts.photoman) || isPhotomanSave();
         const _dgT0 = performance.now();
         if (typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'uploadLayoutForQR start (' + layoutKey + ')', { state: 'start', layout: layoutKey }, true);
         let srcCanvas = previewCanvas;
@@ -34571,17 +34593,17 @@
         // Multi-device codes: "3_strip_cam2.jpg".
         const safeKey = String(layoutKey || 'photo').replace(/[^A-Za-z0-9_-]+/g, '_');
         const filename = filePrefix() + (sessionNumber || 1) + '_' + safeKey + deviceTag() + '.jpg';
-        if (backupDir && backupOk && plainResult) {
-          try { await saveToBackupFolder(blob, filename); } catch (e) { }
+        const dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder(), photoman: isPhotoman };
+        if (backupDir && backupOk && (plainResult || (isPhotoman && !deskResultActive))) {
+          try { await saveToBackupFolder(blob, filename, { photoman: isPhotoman }); } catch (e) { }
         }
-        if (DESKTOP_ONLINE && plainResult) {
-          saveDesktopLocalCopy(blob, filename, { folderKey: rawFolderKey(), subfolder: driveSubfolder() });
+        if (DESKTOP_ONLINE && (plainResult || isPhotoman)) {
+          saveDesktopLocalCopy(blob, filename, dest);
         }
 
         if (driveReady() || LOCALSHARE) {
           // Weak venue internet: try 3 times, then keep the photo on this device
           // and upload it by itself once the connection is back.
-          const dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
           let drive = null, lastErr = null;
           // Saving on this device (laptop / tablet app) never needs the internet.
           const online = LOCALSHARE || navigator.onLine !== false;
@@ -34605,7 +34627,7 @@
               var cutF0 = activeFrame();
               if (cutF0 && cutF0.saveCuts && Array.isArray(cutF0.sections) && cutF0.sections.length > 1) {
                 retainFlat();
-                try { Promise.resolve(saveSectionCutsAsync(sessionNumber || 1, flat, cutF0)).finally(releaseFlat); } catch (e) { releaseFlat(); }
+                try { Promise.resolve(saveSectionCutsAsync(sessionNumber || 1, flat, cutF0, { photoman: isPhotoman })).finally(releaseFlat); } catch (e) { releaseFlat(); }
               }
             }
             if (flatRefs === 0) pbReleaseCanvas(flat);
@@ -34622,7 +34644,7 @@
             var cutF = activeFrame();
             if (cutF && cutF.saveCuts && Array.isArray(cutF.sections) && cutF.sections.length > 1) {
               retainFlat();
-              try { Promise.resolve(saveSectionCutsAsync(sessionNumber || 1, flat, cutF)).finally(releaseFlat); } catch (e) { releaseFlat(); }
+              try { Promise.resolve(saveSectionCutsAsync(sessionNumber || 1, flat, cutF, { photoman: isPhotoman })).finally(releaseFlat); } catch (e) { releaseFlat(); }
             }
           }
           if (flatRefs === 0) { flat._pbFlatDone = null; pbReleaseCanvas(flat); }
@@ -34711,13 +34733,14 @@
         return o.type === 'image/jpeg' ? o : new Blob([o], { type: 'image/jpeg' });
       }
 
-      async function saveSectionCutsAsync(sessNum, flatCanvas, f) {
+      async function saveSectionCutsAsync(sessNum, flatCanvas, f, opts) {
         if (!flatCanvas || !f || !f.saveCuts || !Array.isArray(f.sections) || f.sections.length < 2) return;
         if (typeof uniqueFrameSections !== 'function' || typeof renderUprightSection !== 'function') return;
         var cuts = uniqueFrameSections(f);
         if (!cuts.length) return;
         var num = sessNum || sessionNumber || 1;
-        var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
+        var isPhotoman = !!(opts && opts.photoman) || isPhotomanSave();
+        var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder(), photoman: isPhotoman };
         for (var i = 0; i < cuts.length; i++) {
           var sec = cuts[i];
           if (i > 0) await wait(20);
@@ -34730,7 +34753,7 @@
             var slug = String(sec.name || ('sec' + (i + 1))).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20) || ('sec' + (i + 1));
             var cutName = filePrefix() + num + '_cut_' + (i + 1) + '_' + slug + deviceTag() + '.jpg';
             if (backupDir && backupOk) {
-              try { await saveToBackupFolder(blob, cutName); } catch (e) { }
+              try { await saveToBackupFolder(blob, cutName, { photoman: isPhotoman }); } catch (e) { }
             }
             if (DESKTOP_ONLINE) {
               saveDesktopLocalCopy(blob, cutName, dest);
@@ -34802,10 +34825,11 @@
       async function saveSoloPhotosAsync(sessNum, shots, opts) {
         if (!saveSoloPhotos || !shots || !shots.length) return;
         var lazy = !!(opts && opts.lazySource);
+        var isPhotoman = !!(opts && opts.photoman) || isPhotomanSave();
         var count = shots.length;
         if (typeof window !== 'undefined' && typeof window.pbDiag === 'function') window.pbDiag('SAVE', 'saveSoloPhotosAsync start (' + count + ' shots' + (lazy ? ', lazy' : '') + ')', { state: 'start', count: count, lazy: lazy }, true);
         var num = sessNum || sessionNumber || 1;
-        var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
+        var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder(), photoman: isPhotoman };
         var lowIos = isLowRamIos();
         var job = lazy ? { source: shots, snapshots: null, nextIndex: 0, done: false } : null;
         if (job) _pbDeferredSoloJobs.push(job);
@@ -34860,7 +34884,7 @@
               var soloFilename = filePrefix() + num + '_solo_' + (i + 1) + deviceTag() + '.jpg';
 
               if (backupDir && backupOk) {
-                try { await saveToBackupFolder(blob, soloFilename); } catch (e) { }
+                try { await saveToBackupFolder(blob, soloFilename, { photoman: isPhotoman }); } catch (e) { }
               }
               if (DESKTOP_ONLINE) {
                 saveDesktopLocalCopy(blob, soloFilename, dest);
@@ -35063,6 +35087,7 @@
       var _pbAutoPrintPendingUntil = 0;
       async function showQRForCurrentPhoto() {
         if (!shotCanvases.every(Boolean)) return;
+        const isPhotoman = isPhotomanSave();
         const myGeneration = ++qrGeneration;
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
@@ -35095,7 +35120,7 @@
         if (myGeneration !== qrGeneration) { clearTimeout(slowTimer); pbReleaseShotList(soloShotsSnapshot); return null; }
         let result = null, lastError = null;
         const onRetry = () => { if (myGeneration !== qrGeneration) return; if (evFolder) setCap('All photos \u00b7 weak internet, still uploading\u2026'); else failQrSlot('photo', 'Weak internet. Trying again\u2026'); };
-        const saveP = uploadLayoutForQR(currentLayout, onRetry);
+        const saveP = uploadLayoutForQR(currentLayout, onRetry, { photoman: isPhotoman });
         _pbActiveSavePromise = saveP;
         try { result = await saveP; }
         catch (err) { lastError = err; console.error('Photo upload failed:', err); }
@@ -35107,9 +35132,9 @@
         // On 3 GB iPads (deferSoloClone), pass shotCanvases lazily so saveSoloPhotosAsync waits for auto-print/printing
         // to finish first and clones ONE shot at a time (~7.7 MB peak instead of ~31 MB overlapping with print).
         if (deferSoloClone && saveSoloPhotos && state === 'result' && shotCanvases && shotCanvases.every(Boolean)) {
-          saveSoloPhotosAsync(soloSessionNum, shotCanvases, { lazySource: true });
+          saveSoloPhotosAsync(soloSessionNum, shotCanvases, { lazySource: true, photoman: isPhotoman });
         } else if (saveSoloPhotos && soloShotsSnapshot && soloShotsSnapshot.length) {
-          saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot);
+          saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot, { photoman: isPhotoman });
         } else {
           pbReleaseShotList(soloShotsSnapshot);
         }
@@ -36673,10 +36698,11 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       }
 
       async function saveToDevice() {
+        const isPhotoman = isPhotomanSave();
         if (backupDir && backupOk) {
           const name = filePrefix() + (sessionNumber || 1) + '_' + currentLayout + deviceTag() + '.png';
           const blob = await pbCanvasBlob(previewCanvas, 'image/png');
-          if (blob && await saveToBackupFolder(blob, name)) {
+          if (blob && await saveToBackupFolder(blob, name, { photoman: isPhotoman })) {
             showToast(driveReady() ? 'Saved to the backup folder (and uploading to Drive).' : 'Saved to the backup folder.');
             return;
           }
@@ -45426,6 +45452,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
 
       async function startSession(skipReady, opts) {
         if (state === 'capturing') return;
+        deskResultActive = false;
         if (typeof window.pbDiag === 'function') window.pbDiag('STEP', 'startSession (layout=' + currentLayout + ', printSize=' + (printSize || 'none') + ', autoPrint=' + !!autoPrint + ')', { state: 'start', layout: currentLayout, printSize: printSize || '', autoPrint: !!autoPrint }, true);
         closeGalleryPop();
         var hasCamSel = !!(typeof cameraSelect !== 'undefined' && cameraSelect && cameraSelect.value);
@@ -46396,28 +46423,31 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!skipPreview) renderSetupPreview();
         const activeKeyNow = layoutCardKey();
         const mappedPaper = layoutPaperMap && layoutPaperMap[activeKeyNow];
-        if (mappedPaper && typeof paperFor === 'function' && paperFor(mappedPaper) && (typeof printSettings !== 'function' || (printSettings() || []).includes(mappedPaper))) {
+        const hasMappedPaper = !!(mappedPaper && typeof paperFor === 'function' && paperFor(mappedPaper) && (typeof printSettings !== 'function' || (printSettings() || []).includes(mappedPaper)));
+        if (hasMappedPaper) {
           printSize = mappedPaper;
           try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
         }
-        var isRc = effectiveLayoutTier(key) === 'receipt';      // B&W / thermal tag (or an either-way frame chosen under B&W designs)
-        if (isRc) {
-          if (typeof isReceiptPaper === 'function' && !isReceiptPaper(printSize)) {
-            const usable = (printSettings() || []).filter(isReceiptPaper);
-            // Fix: prefer receipt58 when the printer is 58mm (check saved paper pref or printer name containing "58")
-            if (usable.length) {
-              const _last58 = (() => { try { return localStorage.getItem('pb_print_paper'); } catch (e) { return null; } })();
-              const _pName = typeof activePrinterName === 'function' ? activePrinterName() : '';
-              if (usable.includes('receipt58') && (!usable.includes('receipt80') || _last58 === 'receipt58' || (typeof is58mmPrinterName === 'function' ? is58mmPrinterName(_pName) : /58/.test(_pName))))
-                printSize = 'receipt58';
-              else
-                printSize = usable.includes('receipt80') ? 'receipt80' : usable[0];
-            } else printSize = 'receipt80';
-          }
-        } else {
-          if (typeof isReceiptPaper === 'function' && isReceiptPaper(printSize)) {
-            const usable = (printSettings() || []).filter(k => !isReceiptPaper(k));
-            if (usable.length) printSize = usable.includes('4x6') ? '4x6' : (usable.includes('selphy') ? 'selphy' : usable[0]);
+        var isRc = effectiveLayoutTier(key) === 'receipt';      // B&W / thermal tag (colour receipts stay on photo paper even when Separate B&W and colour prints is off)
+        if (!hasMappedPaper) {
+          if (isRc) {
+            if (typeof isReceiptPaper === 'function' && !isReceiptPaper(printSize)) {
+              const usable = (printSettings() || []).filter(isReceiptPaper);
+              // Fix: prefer receipt58 when the printer is 58mm (check saved paper pref or printer name containing "58")
+              if (usable.length) {
+                const _last58 = (() => { try { return localStorage.getItem('pb_print_paper'); } catch (e) { return null; } })();
+                const _pName = typeof activePrinterName === 'function' ? activePrinterName() : '';
+                if (usable.includes('receipt58') && (!usable.includes('receipt80') || _last58 === 'receipt58' || (typeof is58mmPrinterName === 'function' ? is58mmPrinterName(_pName) : /58/.test(_pName))))
+                  printSize = 'receipt58';
+                else
+                  printSize = usable.includes('receipt80') ? 'receipt80' : usable[0];
+              } else printSize = 'receipt80';
+            }
+          } else {
+            if (typeof isReceiptPaper === 'function' && isReceiptPaper(printSize)) {
+              const usable = (printSettings() || []).filter(k => !isReceiptPaper(k));
+              if (usable.length) printSize = usable.includes('4x6') ? '4x6' : (usable.includes('selphy') ? 'selphy' : usable[0]);
+            }
           }
         }
         refreshPrintUI();
@@ -48930,6 +48960,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             }
           };
           const drawPhoto = (img, x, y, w, h, opts) => {
+            x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
             const o = opts || {};
             if (o.offsetShadow) {
               ctx.fillStyle = ink;
@@ -53090,18 +53121,21 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         }
       }
       // Runs fn() with global printSize / printPrefs / colorAdj temporarily scoped to the given printer & paper size.
+      var scopedPrinterName = '';
       function withPrinterContext(printerName, sizeKey, fn) {
-        const origSize = printSize, origPrefs = printPrefs;
+        const origSize = printSize, origPrefs = printPrefs, origPrinter = scopedPrinterName;
         const origAdj = typeof colorAdj !== 'undefined' ? colorAdj : null;
         const origWinAdj = window._colorAdj;
         const scopedPrefs = Object.assign({}, origPrefs, optsOfPrinter(printerName));
         const scopedAdj = colorOfPrinter(printerName);
+        scopedPrinterName = printerName || '';
         printSize = sizeKey;
         printPrefs = scopedPrefs;
         if (typeof colorAdj !== 'undefined') colorAdj = scopedAdj;
         window._colorAdj = scopedAdj;
         try { return fn(); }
         finally {
+          scopedPrinterName = origPrinter;
           printSize = origSize;
           printPrefs = origPrefs;
           if (typeof colorAdj !== 'undefined') colorAdj = origAdj;
@@ -53193,7 +53227,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             let ep = paperFor(sec.size);
             const c = printAdjust(buildPrintCanvas(sec.size));
             try {
-              if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
+              if (ep.receipt) ep = Object.assign({}, ep, { h: c._pbKeepColor ? Math.round(ep.w * c.height / Math.max(1, c.width) * 10) / 10 : Math.round(c.height / RECEIPT_DPI * 254) / 10 });
               const ok = await printViaHelper([c], ep, sec.name, { sizeKey: sec.size, twoUp: stripTwoUp(sec.size) && !sizedPhoto() });
               if (!ok) showToast('Printer “' + sec.name + '” did not print.', 5000);
               return ok;
@@ -53922,7 +53956,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           const receiptW = ((paper.w && paper.w <= 55) || force58H) ? 384 : 576;
           const receiptQ = (opt && opt.thermalQuality) || (printPrefs && printPrefs.thermalQuality) || 'best';
           const helperPages = pages.map(c => {
-            if (paper.receipt && c && !c._pbToneDone && Tbt && typeof Tbt.toReceiptGray === 'function') {
+            if (paper.receipt && c && !c._pbToneDone && !c._pbKeepColor && Tbt && typeof Tbt.toReceiptGray === 'function') {
               return Tbt.toReceiptGray(c, receiptW, receiptQ);
             }
             return c;
@@ -54155,8 +54189,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (!usable.includes(printSize)) {
           let saved = null; try { saved = localStorage.getItem('pb_print_paper'); } catch (e) { }
           const tabletPick = isMobileOS() && isStripLayout() && usable.includes('4x6') ? '4x6' : null;   // 2 strips on one 4x6 sheet
-          // Black & white receipt: the receipt roll first; colour receipt: a receipt roll if that's what was used last.
-          const rollPick = layoutDef().kind === 'receipt' ? (usable.includes(saved) && (layoutDef().color || isReceiptPaper(saved)) ? saved : (layoutDef().color ? null : usable.find(isReceiptPaper))) : null;
+          const ld = layoutDef();
+          const photoUsable = usable.filter(k => !isReceiptPaper(k));
+          const photoPick = photoUsable.includes('4x6') ? '4x6' : (photoUsable.includes('selphy') ? 'selphy' : (photoUsable[0] || null));
+          // Black & white receipt: thermal roll first; colour receipt: photo paper first (never silently pick a thermal roll when photo paper is available).
+          const rollPick = ld.kind === 'receipt'
+            ? (ld.color
+              ? ((saved && usable.includes(saved) && !isReceiptPaper(saved)) ? saved : photoPick)
+              : (saved && usable.includes(saved) && isReceiptPaper(saved) ? saved : usable.find(isReceiptPaper)))
+            : null;
           printSize = rollPick || (saved && usable.includes(saved) ? saved : null) || tabletPick || usable[0] || null;
         }
         // Fix: if the resolved printSize is receipt80 but the active printer name contains "58"
@@ -54891,15 +54932,32 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           return Math.max(paper.w, paper.h) <= 190 ? 720 : 360;
         } catch (e) { return 0; }
       }
+      function isThermalPrintTarget(paperKey) {
+        try {
+          const fp = (typeof scopedPrinterName !== 'undefined' && scopedPrinterName) ? scopedPrinterName : (typeof forcedPrinterName === 'function' ? forcedPrinterName() : '');
+          const btName = typeof btProfileName === 'function' ? btProfileName() : '';
+          if (typeof isBtThermalRoute === 'function' && isBtThermalRoute() && (!fp || fp === btName)) return true;
+          const pname = fp || (typeof printerFor === 'function' && paperKey ? printerFor(paperKey) : '');
+          if (pname && typeof isThermalPrinterName === 'function' && isThermalPrinterName(pname)) return true;
+          const wp = (typeof wifiForSize === 'function' && paperKey ? wifiForSize(paperKey) : null) || (typeof wifiPrinter !== 'undefined' ? wifiPrinter : null);
+          if (wp && !wp.dialog) {
+            if (wp.raw && !wp.ipp && !wp.escpr && !wp.epsonL && !wp.selphy && !wp.dnp && !wp.canon && !wp.instax) return true;
+            if (wp.name && typeof isThermalPrinterName === 'function' && isThermalPrinterName(wp.name)) return true;
+          }
+          return false;
+        } catch (e) { return false; }
+      }
       function buildPrintCanvas(key) {
         if (plainResult) return buildPlainPrint(key);          // "Print original" from the roving screen
         const paper = paperFor(key);
-        const reusePreview = !paper.receipt && typeof canReusePreviewCanvas === 'function' && canReusePreviewCanvas(currentLayout);
+        const ldCur = typeof layoutDef === 'function' ? layoutDef(currentLayout) : null;
+        const keepColorReceipt = !!(paper && paper.receipt && ldCur && ldCur.kind === 'receipt' && ldCur.color && !isThermalPrintTarget(key));
+        const reusePreview = (!paper.receipt || keepColorReceipt) && typeof canReusePreviewCanvas === 'function' && canReusePreviewCanvas(currentLayout);
         let src = reusePreview ? previewCanvas : document.createElement('canvas');
         if (!reusePreview) {
           src._hiRes = true;
-          receiptPrintGrey = !!paper.receipt;
-          receiptPrint58 = !!(paper.receipt && paper.w <= 55);
+          receiptPrintGrey = !!(paper.receipt && !keepColorReceipt);
+          receiptPrint58 = !!(paper.receipt && !keepColorReceipt && paper.w <= 55);
           try { renderCompositeToCanvas(currentLayout, src); } finally { receiptPrintGrey = false; receiptPrint58 = false; }
         }
         const origSrc = src;
@@ -54908,20 +54966,25 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         if (paper.receipt) {
           // Exactly the printer's dots across (80 mm roll: 576, 58 mm: 384), so the receipt is never resized on the way;
           // 72 mm x 203 dpi used to round to 575. As long as the receipt is.
+          // When a colour receipt template prints to a non-thermal (colour) printer, preserve full colour and 2x resolution.
           const rc = document.createElement('canvas');
-          rc.width = paper.w <= 55 ? 384 : RECEIPT_W;
-          rc.height = Math.round(src.height * rc.width / src.width);
+          rc.width = keepColorReceipt ? src.width : (paper.w <= 55 ? 384 : RECEIPT_W);
+          rc.height = keepColorReceipt ? src.height : Math.round(src.height * rc.width / src.width);
           const rx = rc.getContext('2d');
           rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height);
           rx.imageSmoothingEnabled = rc.width !== src.width;
           rx.imageSmoothingQuality = 'high';
           rx.drawImage(src, 0, 0, rc.width, rc.height);
           if (src !== previewCanvas) pbReleaseCanvas(src);
-          // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
-          // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
-          // Receipt layouts (black & white or colour) already put the Lightness into their photos above; adding it to the whole
-          // page again would grey the black text and the printer would break it into dots ("1x" printed as "_x").
-          try { const ld = layoutDef(currentLayout); if (ld.kind === 'receipt') rc._pbToneDone = true; } catch (e) { }
+          if (keepColorReceipt) {
+            rc._pbKeepColor = true;
+          } else {
+            // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
+            // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
+            // Receipt layouts (black & white or colour) already put the Lightness into their photos above; adding it to the whole
+            // page again would grey the black text and the printer would break it into dots ("1x" printed as "_x").
+            try { const ld = layoutDef(currentLayout); if (ld.kind === 'receipt') rc._pbToneDone = true; } catch (e) { }
+          }
           return rc;
         }
         // A sideways (landscape) layout on portrait paper prints turned 90°.
@@ -55304,7 +55367,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           // Lossless PNG when within the upload budget for razor-sharp overlays & dye-sub skin tones;
           // otherwise high-quality JPEG (0.96 -> 0.92 -> ...).
           const Tst = window._btThermal;
-          const stPage = (paper.receipt && pages[i] && !pages[i]._pbToneDone && Tst && typeof Tst.toReceiptGray === 'function')
+          const stPage = (paper.receipt && pages[i] && !pages[i]._pbToneDone && !pages[i]._pbKeepColor && Tst && typeof Tst.toReceiptGray === 'function')
             ? Tst.toReceiptGray(pages[i], (paper.w && paper.w <= 55) ? 384 : 576, (printPrefs && printPrefs.thermalQuality) || 'best')
             : pages[i];
           let url = stPage.toDataURL('image/png');
@@ -55360,7 +55423,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         const pp = paperFor(printSize);
         if (pp && pp.receipt) {
           return pages.map(c => {
-            if (!c || c._pbToneDone) return c;
+            if (!c || c._pbToneDone || c._pbKeepColor) return c;
             try {
               const g = document.createElement('canvas'); g.width = c.width; g.height = c.height;
               const gx = g.getContext('2d'); gx.drawImage(c, 0, 0);
@@ -55634,7 +55697,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       let wifiSizeMap = {};
       try { wifiSizeMap = JSON.parse(localStorage.getItem(WIFI_SIZE_MAP_KEY) || '{}') || {}; } catch (e) { wifiSizeMap = {}; }
       function wifiSizeKey() { try { return printSize ? String(printerKey(printSize)) : ''; } catch (e) { return ''; } }
-      function wifiForSize(size) { try { const k = size ? String(printerKey(size)) : ''; return (k && wifiSizeMap[k]) || wifiDefault || null; } catch (e) { return wifiDefault || null; } }
+      function wifiForSize(size) { try { const k = size ? String(printerKey(size)) : ''; return (k && wifiSizeMap[k]) || (size && k !== size && wifiSizeMap[size]) || wifiDefault || null; } catch (e) { return wifiDefault || null; } }
       function wifiByName(n) {
         if (!n) return null;
         let found = null;
@@ -57504,7 +57567,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           pages = printAdjustAll(flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)]);
           if (typeof window.pbDiag === 'function') window.pbDiag('PRINT', 'print pages built (' + pages.length + 'p, ' + (pages[0] ? (pages[0].width + 'x' + pages[0].height) : '0x0') + ' in ' + Math.round(performance.now() - _dgPg0) + 'ms)', { state: 'start', pages: pages.length, w: pages[0] ? pages[0].width : 0, h: pages[0] ? pages[0].height : 0, ms: Math.round(performance.now() - _dgPg0) }, true);
           // Receipt rolls: the "page" is as long as the receipt.
-          if (paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
+          if (paper.receipt) paper = Object.assign({}, paper, { h: (pages[0] && pages[0]._pbKeepColor) ? Math.round(paper.w * pages[0].height / Math.max(1, pages[0].width) * 10) / 10 : Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
           const label = (n > 1 ? n + ' copies, ' : '') + paper.name;
           if (useStation()) {
             try {
@@ -64912,6 +64975,10 @@ function renderTabletBridgeSetup(info) {
         if (soloPaper === null) soloPaper = printSize || '';
         if (fid) { if (deskKeepFrame === undefined) deskKeepFrame = activeFrameId; activeFrameId = fid; }
         currentLayout = lk;
+        if (typeof isReceiptPaper === 'function' && isReceiptPaper(printSize) && typeof effectiveLayoutTier === 'function' && effectiveLayoutTier(lk) !== 'receipt') {
+          var photoUsable = (printSettings() || []).filter(function (k) { return !isReceiptPaper(k); });
+          if (photoUsable.length) printSize = photoUsable.includes('4x6') ? '4x6' : (photoUsable.includes('selphy') ? 'selphy' : photoUsable[0]);
+        }
         try { refreshPrintUI(); } catch (e) { }
       }
       var deskLast = null;
@@ -64930,7 +64997,7 @@ function renderTabletBridgeSetup(info) {
         var sv = {
           state: state, currentLayout: currentLayout, activeFrameId: activeFrameId,
           shotCanvases: shotCanvases, plainResult: plainResult, flipbookResult: flipbookResult,
-          sessionNumber: sessionNumber, soloPaper: soloPaper, deskKeepFrame: deskKeepFrame
+          sessionNumber: sessionNumber, soloPaper: soloPaper, deskKeepFrame: deskKeepFrame, printSize: printSize
         };
         window._deskActiveCtx = ctx;
         try {
@@ -64953,6 +65020,7 @@ function renderTabletBridgeSetup(info) {
           sessionNumber = sv.sessionNumber;
           soloPaper = sv.soloPaper;
           deskKeepFrame = sv.deskKeepFrame;
+          printSize = sv.printSize;
         }
       }
       function deskRenderResultCard() {
@@ -65021,7 +65089,7 @@ function renderTabletBridgeSetup(info) {
         var soloSnap = (typeof saveSoloPhotos !== 'undefined' && saveSoloPhotos && ctx.shots) ? ctx.shots.map(cloneShotForSolo) : null;
 
         try {
-          var res = await deskRunWithBoothCtx(ctx, function () { return uploadLayoutForQR(resolvedLayoutKey); });
+          var res = await deskRunWithBoothCtx(ctx, function () { return uploadLayoutForQR(resolvedLayoutKey, null, { photoman: true }); });
           if (res && (res.fileId || res.url)) {
             var finalUrl = res.fileId ? fileShareUrl(res.fileId, true) : res.url;
             if (deskLast && deskLast.sessionNumber === ctx.sessionNum) {
@@ -65040,7 +65108,7 @@ function renderTabletBridgeSetup(info) {
           }
         } finally {
           if (typeof saveSoloPhotos !== 'undefined' && saveSoloPhotos && soloSnap && soloSnap.length) {
-            try { saveSoloPhotosAsync(ctx.sessionNum, soloSnap); } catch (e) { }
+            try { saveSoloPhotosAsync(ctx.sessionNum, soloSnap, { photoman: true }); } catch (e) { }
           }
         }
       }
@@ -65132,6 +65200,10 @@ function renderTabletBridgeSetup(info) {
         if (currentLayout === 'solo') return;
         if (soloPaper === null) soloPaper = printSize || '';
         currentLayout = 'solo';
+        if (typeof isReceiptPaper === 'function' && isReceiptPaper(printSize)) {
+          var photoUsable = (printSettings() || []).filter(function (k) { return !isReceiptPaper(k); });
+          if (photoUsable.length) printSize = photoUsable.includes('4x6') ? '4x6' : (photoUsable.includes('selphy') ? 'selphy' : photoUsable[0]);
+        }
         try { refreshPrintUI(); } catch (e) { }
       }
       function restoreSoloPaper() {
@@ -65154,7 +65226,7 @@ function renderTabletBridgeSetup(info) {
         shotCanvases = shots;
         qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
         retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true; cancelSessionBtn.hidden = true;
-        state = 'result'; deskReturn = opts.back !== undefined ? opts.back : 'desk';
+        state = 'result'; deskReturn = opts.back !== undefined ? opts.back : 'desk'; deskResultActive = true;
         sessionNumber = nextSessionNumber();
         renderComposite(); updateUI();
         if (opts.qrUrl) { qrSlot('photo', 'Your photo', ''); fillQrSlot('photo', opts.qrUrl); }
@@ -65166,7 +65238,7 @@ function renderTabletBridgeSetup(info) {
       var _resetForNextGuest = resetForNextGuest;
       resetForNextGuest = function () {
         var back = deskReturn, wasResult = state === 'result';
-        flipbookResult = null; plainResult = null; deskReturn = false;
+        flipbookResult = null; plainResult = null; deskReturn = false; deskResultActive = false;
         _resetForNextGuest();
         restoreSoloPaper();
         if (deskKeepFrame !== undefined) {
@@ -80460,8 +80532,7 @@ function renderTabletBridgeSetup(info) {
         }
         var effTier = tierFilter || ((typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) ? sessionTier : null);
         if (effTier === 'receipt') {
-          // layoutTier(): with "Separate B&W and colour prints" off this is the old rule (receipt layouts and frames tagged thermal
-          // are thermal, everything else is colour); on, the colour receipts and colour frames count as colour.
+          // layoutTier(): B&W receipt layouts and frames tagged thermal are 'receipt'; colour receipts and photo layouts are 'photo'.
           var rKeys = keys.filter(function (k) {
             return (/^frame:/.test(k) || LAYOUT_DEFS[k]) && layoutFitsTier(k, 'receipt');
           });
@@ -98433,7 +98504,9 @@ function fxWavUrl(kind) {
         (function () {
           if (!api.hotspot || DESKTOP_ONLINE) return;
           var box = document.getElementById('deskHotspotBox'), on = document.getElementById('deskHotspotOn'), auto = document.getElementById('deskHotspotAuto');
+          var autoRecRow = document.getElementById('deskHotspotAutoRecycleRow'), autoRec = document.getElementById('deskHotspotAutoRecycle');
           var hint = document.getElementById('deskHotspotHint'), setupRow = document.getElementById('deskHotspotSetupRow'), setupBtn = document.getElementById('deskHotspotSetup');
+          var crowdRow = document.getElementById('deskHotspotCrowdRow'), boostBtn = document.getElementById('deskHotspotBoost'), recycleBtn = document.getElementById('deskHotspotRecycle');
           // Name and password the operator chooses (Windows). A Mac keeps its own in System Settings → Sharing.
           var creds = api.hotspotCreds ? hotspotCredsUI({
             save: function (n, p) { return api.hotspotCreds(n, p); },
@@ -98450,6 +98523,8 @@ function fxWavUrl(kind) {
               on.disabled = true;
               auto.disabled = true;
               setupRow.style.display = 'none';
+              if (autoRecRow) autoRecRow.style.display = 'none';
+              if (crowdRow) crowdRow.style.display = 'none';
               hint.className = 'panel-hint bad';
               hint.textContent = i.error || 'This laptop\u2019s Wi-Fi adapter can\u2019t host a hotspot. Connect the laptop to a pocket Wi-Fi router or a phone hotspot instead.';
               return;
@@ -98458,17 +98533,54 @@ function fxWavUrl(kind) {
             on.disabled = !!i.busy;
             auto.checked = !!i.auto;
             setupRow.style.display = i.needsSetup ? '' : 'none';
+            var isWinHs = !i.external && !!i.canCustom;
+            if (autoRecRow && autoRec) {
+              autoRecRow.style.display = (isWinHs && api.hotspotAutoRecycle) ? '' : 'none';
+              autoRec.checked = i.autoRecycle !== false;
+              autoRec.disabled = !!i.busy;
+            }
+            var maxC = Number(i.maxClients) || 8, curC = Number(i.clients) || 0;
+            var hwC = Number(i.hwMaxClients) || 0;
+            var effC = Number(i.effectiveMaxClients) || (hwC > 0 ? Math.min(maxC, hwC) : maxC);
+            var targetC = Number(i.targetMaxClients) || 20;
+            var regC = Number(i.regMaxClients) || 0;
+            var showBoost = !!(isWinHs && api.hotspotRaiseLimit && i.canBoostLimit);
+            var showRecycle = !!(isWinHs && api.hotspotRecycle && i.on && curC > 0);
+            if (crowdRow) {
+              crowdRow.style.display = (showBoost || showRecycle) ? 'flex' : 'none';
+              if (boostBtn) {
+                boostBtn.style.display = showBoost ? '' : 'none';
+                boostBtn.disabled = !!i.busy;
+                if (!boostBtn.dataset.working) boostBtn.textContent = 'Allow up to ' + targetC + ' phones (1-time)';
+              }
+              if (recycleBtn) {
+                recycleBtn.style.display = showRecycle ? '' : 'none';
+                recycleBtn.disabled = !!i.busy;
+                if (!recycleBtn.dataset.working) recycleBtn.textContent = 'Clear idle phones (' + curC + ')';
+              }
+            }
             if (creds) creds.render(i);
-            if (i.busy) { hint.className = 'panel-hint'; hint.textContent = 'Working on it… this can take up to a minute.'; }
-            else if (i.on && i.external) { hint.className = 'panel-hint'; hint.textContent = 'Internet Sharing is on ✓ Its name and password are the ones in System Settings → Sharing → Wi-Fi Options. Type them in the Wi-Fi boxes below so the Join QR matches.'; }
+            if (i.recycling) { hint.className = 'panel-hint'; hint.textContent = 'Clearing idle phones\u2026 ready again in ~3 seconds (same Wi-Fi name & QR).'; }
+            else if (i.busy) { hint.className = 'panel-hint'; hint.textContent = 'Working on it\u2026 this can take up to a minute.'; }
+            else if (i.on && i.external) { hint.className = 'panel-hint'; hint.textContent = 'Internet Sharing is on \u2713 Its name and password are the ones in System Settings \u2192 Sharing \u2192 Wi-Fi Options. Type them in the Wi-Fi boxes below so the Join QR matches.'; }
             else if (i.on) {
-              var maxC = Number(i.maxClients) || 8, curC = Number(i.clients) || 0;
-              var capMsg = ' (' + curC + '/' + maxC + ' phones connected' + (curC >= maxC - 1 ? ' — nearly full! Ask earlier guests to disconnect, or use a pocket router for big crowds' : '') + ')';
+              var nearFull = curC >= Math.max(1, effC - 1);
+              var fullNote = '';
+              if (nearFull) {
+                if (i.recycleBlockedByStation) fullNote = ' \u2014 full! Auto-clear paused while a booth tablet/station is on Booth Wi-Fi; tap Clear idle phones when ready';
+                else if (i.autoRecycle !== false) fullNote = ' \u2014 nearly full! Idle phones will auto-clear once downloads finish, or tap Clear idle phones now';
+                else fullNote = ' \u2014 nearly full! Tap Clear idle phones, or turn on Auto-clear idle phones';
+              }
+              var capMsg = ' (' + curC + '/' + maxC + ' phones connected' + fullNote + ')';
+              var hwNote = '';
+              if (showBoost) hwNote = ' Click \u201cAllow up to ' + targetC + ' phones\u201d below to raise Windows\u2019 8-phone limit.';
+              else if (regC >= targetC && maxC < targetC) hwNote = ' Windows boost applied; this Wi-Fi driver limits simultaneous phones to ' + maxC + ', so Auto-clear keeps 15\u201320+ guests moving smoothly (or use a pocket router for 20 at once).';
+              else if (hwC > 0 && hwC < 15 && maxC >= 15) hwNote = ' Wi-Fi chip handles ~' + hwC + ' at once; Auto-clear keeps 15\u201320+ guests moving smoothly.';
               var venueWarn = (!DESKTOP_ONLINE && i.venueWifi)
-                ? ' ⚠ Also joined to venue Wi-Fi “' + i.venueWifi + '” — weak venue Wi-Fi can make iPhones drop off Booth Wi-Fi; disconnect from venue Wi-Fi for the most stable offline QR.'
+                ? ' \u26a0 Also joined to venue Wi-Fi \u201c' + i.venueWifi + '\u201d \u2014 weak venue Wi-Fi can make iPhones drop off Booth Wi-Fi; disconnect from venue Wi-Fi for the most stable offline QR.'
                 : '';
-              hint.className = (curC >= maxC - 1 || venueWarn) ? 'panel-hint bad' : 'panel-hint';
-              hint.textContent = 'The booth Wi-Fi is on ✓' + capMsg + '. Guests scan the Join QR below, then their photo QR.' + venueWarn;
+              hint.className = (nearFull || venueWarn) ? 'panel-hint bad' : 'panel-hint';
+              hint.textContent = 'The booth Wi-Fi is on \u2713' + capMsg + '. Guests scan the Join QR below, then their photo QR.' + hwNote + venueWarn;
             }
             else if (i.error) { hint.className = 'panel-hint bad'; hint.textContent = i.error; }
             else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this laptop makes its own Wi-Fi for guests. Then the laptop has no internet unless it also uses a cable.'; }
@@ -98478,7 +98590,7 @@ function fxWavUrl(kind) {
               wn.readOnly = wp.readOnly = true;
               var cur = wifiInfo();
               if (!cur || cur.ssid !== i.ssid || cur.pass !== i.pass) { wn.value = i.ssid; wp.value = i.pass; saveWifiInfo(i.ssid, i.pass); }
-              wHint.className = 'panel-hint'; wHint.textContent = 'Using the booth Wi-Fi this laptop is making ✓';
+              wHint.className = 'panel-hint'; wHint.textContent = 'Using the booth Wi-Fi this laptop is making \u2713';
             } else {
               if (extBox) extBox.style.display = '';
               wn.readOnly = wp.readOnly = false;
@@ -98488,7 +98600,7 @@ function fxWavUrl(kind) {
           function refresh() { api.hotspot().then(render).catch(function () { }); }
           on.addEventListener('change', function () {
             on.disabled = true;
-            hint.className = 'panel-hint'; hint.textContent = on.checked ? 'Starting the booth Wi-Fi…' : 'Turning it off…';
+            hint.className = 'panel-hint'; hint.textContent = on.checked ? 'Starting the booth Wi-Fi\u2026' : 'Turning it off\u2026';
             if (on.checked) {
               auto.checked = true;
               try { api.hotspotAuto(true); } catch (e) { }
@@ -98496,8 +98608,57 @@ function fxWavUrl(kind) {
             api.hotspotSet(on.checked).then(render).catch(function () { refresh(); });
           });
           auto.addEventListener('change', function () { api.hotspotAuto(auto.checked).then(render).catch(function () { }); });
+          if (autoRec && api.hotspotAutoRecycle) {
+            autoRec.addEventListener('change', function () { api.hotspotAutoRecycle(autoRec.checked).then(render).catch(function () { }); });
+          }
+          if (boostBtn && api.hotspotRaiseLimit) {
+            boostBtn.addEventListener('click', function () {
+              boostBtn.disabled = true;
+              boostBtn.dataset.working = '1';
+              boostBtn.textContent = 'Raising limit to 20 phones\u2026';
+              hint.className = 'panel-hint';
+              hint.textContent = 'Raising Windows hotspot limit to 20 phones (choose Yes if Windows asks)\u2026';
+              api.hotspotRaiseLimit(20).then(function (r) {
+                delete boostBtn.dataset.working;
+                boostBtn.disabled = false;
+                if (r && r.info) render(r.info);
+                else refresh();
+                if (r && r.ok) {
+                  var mc = Number((r.info && r.info.maxClients) || r.maxClients) || 20;
+                  showToast(mc >= 15
+                    ? 'Booth Wi-Fi limit raised to ' + mc + ' phones \u2713'
+                    : 'Windows boost applied \u2713 Auto-clear idle phones is ON to keep 15\u201320+ guests moving.', 6000);
+                } else if (r && r.error) {
+                  showToast(r.error, 6000);
+                }
+              }).catch(function () {
+                delete boostBtn.dataset.working;
+                boostBtn.disabled = false;
+                refresh();
+              });
+            });
+          }
+          if (recycleBtn && api.hotspotRecycle) {
+            recycleBtn.addEventListener('click', function () {
+              recycleBtn.disabled = true;
+              recycleBtn.dataset.working = '1';
+              recycleBtn.textContent = 'Clearing idle phones\u2026';
+              api.hotspotRecycle().then(function (r) {
+                delete recycleBtn.dataset.working;
+                recycleBtn.disabled = false;
+                if (r && r.info) render(r.info);
+                else refresh();
+                if (r && r.ok) showToast('Cleared idle phones \u2713 Ready for the next guests.', 4500);
+                else if (r && r.error) showToast(r.error, 6000);
+              }).catch(function () {
+                delete recycleBtn.dataset.working;
+                recycleBtn.disabled = false;
+                refresh();
+              });
+            });
+          }
           setupBtn.addEventListener('click', function () {
-            setupBtn.disabled = true; setupBtn.textContent = 'Setting up…';
+            setupBtn.disabled = true; setupBtn.textContent = 'Setting up\u2026';
             api.hotspotSetup().then(function (r) {
               setupBtn.disabled = false; setupBtn.textContent = 'Set up (one time)';
               if (r && r.ok) return api.hotspotSet(true).then(render);

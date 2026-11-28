@@ -18,7 +18,7 @@ import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './li
 import { initSetupSync, handleSetupRequest, syncAllNow } from './lib/setup-sync.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinSaveVideo, spinConnectInfo, spinLookOfferSet, spinSendCfgSet, spinClipsSet, spinSendTake, spinArmStateNow, spinArmCmdPush, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, roveStateSet, roveCmdTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, setPrintNowConfig, studioFolders, studioList, studioRead, setExternalWifi, getHotspotTrafficState } from './lib/photos.mjs';
 import { initBridge, getBridgeInfo, renewBridgeToken, pushBridgeState, sendBridgeEvent, sendCamCommand } from './lib/guest-bridge.mjs';
 import { initLanStation, getLanStationInfo, rotateLanStationPin, setStationPrinterFilter, setStationTestSizes, setStationMode, getPendingStationJobPages, approvePendingStationJob, dismissPendingStationJob, printAllPendingStationJobs, dismissAllPendingStationJobs, buildStationTestJob, recordStationJob } from './lib/lan-print-station.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
@@ -28,7 +28,7 @@ import { makeSelphyJobBuilder } from './lib/selphyusb.mjs';
 import { makeDnpJobBuilder } from './lib/dnpusb.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
-import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotFixFirewall, hotspotSetCreds, hotspotWake, hotspotTouch, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
+import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetAutoRecycle, hotspotRecycle, hotspotRaiseLimit, hotspotSetup, hotspotFixFirewall, hotspotSetCreds, hotspotWake, hotspotTouch, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
 import { freeCamera, guardCamera, stopGuardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
 import { stopUsbEnum } from './lib/usb-enum.mjs';
@@ -294,6 +294,7 @@ async function handle(req) {
           folderKey: sp.get('folderKey') || '',
           subfolder: sp.get('subfolder') || '',
           guestCode: sp.get('guestCode') || '',
+          photoman: sp.get('photoman') === '1' || sp.get('photoman') === 'true',
           buffer: buf
         }));
       }
@@ -662,6 +663,9 @@ function wireIpc() {
   ipcMain.handle('pb4u:hotspotWake', () => { if (!isOnlineMode()) hotspotWake(); return hotspotInfo(); });   // Option 1: UI signals session start
   ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
   ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
+  ipcMain.handle('pb4u:hotspotAutoRecycle', (e, on) => hotspotSetAutoRecycle(!!on));
+  ipcMain.handle('pb4u:hotspotRecycle', async () => hotspotRecycle({ auto: false }));
+  ipcMain.handle('pb4u:hotspotRaiseLimit', async (e, target) => hotspotRaiseLimit(target));
   ipcMain.handle('pb4u:hotspotCreds', (e, ssid, pass) => {
     setExternalWifi(ssid, pass);
     return hotspotSetCreds(String(ssid || ''), String(pass || ''));
@@ -1168,6 +1172,7 @@ app.whenReady().then(async () => {
     dir: app.getPath('userData'),   // where the "hotspot is starting" crash marker lives
     skipAuto: isOnlineMode(),
     isOffline: () => !isOnlineMode(),
+    getTraffic: getHotspotTrafficState,
     // The page hears about every change (on, off, locked), so its Join QR stays right without polling.
     onChange: (i) => { invalidateLanCache(); broadcastWin('pb4u:hotspotChanged', i); }
   });

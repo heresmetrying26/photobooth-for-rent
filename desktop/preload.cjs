@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('pb4u', {
   hotspot: () => ipcRenderer.invoke('pb4u:hotspot'),
   hotspotSet: (on) => ipcRenderer.invoke('pb4u:hotspotSet', !!on),
   hotspotAuto: (on) => ipcRenderer.invoke('pb4u:hotspotAuto', !!on),
+  hotspotAutoRecycle: (on) => ipcRenderer.invoke('pb4u:hotspotAutoRecycle', !!on),
+  hotspotRecycle: () => ipcRenderer.invoke('pb4u:hotspotRecycle'),
+  hotspotRaiseLimit: (target) => ipcRenderer.invoke('pb4u:hotspotRaiseLimit', target),
   // Option 1: notify the app that a photo session has begun (wakes hotspot from idle if needed).
   hotspotWake: () => ipcRenderer.invoke('pb4u:hotspotWake'),
   // The app calls fn(info) whenever the hotspot changes (on, off, locked), so the page doesn't have to poll.

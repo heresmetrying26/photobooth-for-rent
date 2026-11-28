@@ -10,7 +10,9 @@ import {
   stopShareServer,
   sharePortNow,
   guestViewNow,
-  setGuestView
+  setGuestView,
+  studioList,
+  studioRead
 } from '../lib/photos.mjs';
 
 const tempRoot = mkdtempSync(join(tmpdir(), 'pb4u-solo-test-'));
@@ -171,27 +173,40 @@ try {
   console.log('PASS: Guest personal page displays files in exact sequence: 1st Photo (Print) -> 2nd GIF -> 3rd Solo Shots');
 
   // 7. Test roving photoman session (both designed print 2_solo.jpg and raw solo photo 2_solo_1.jpg)
+  // Saved into separate top-level Photoman/<Event>/Prints and Photoman/<Event>/Solo Shots while
+  // staying in the combined event gallery, Sharing Station, guest page, and session numbering.
   const rRovingDesign = await driveRequest({
     folderKey,
     filename: '2_solo.jpg',
     imageBase64: dummyPixelJpgBase64,
-    guestCode: 'guest-code-roving-456'
+    guestCode: 'guest-code-roving-456789',
+    photoman: true
   });
   assert(rRovingDesign.ok, 'Roving designed composite print should be saved');
+  assert.equal(rRovingDesign.folderUrl, r1.folderUrl, 'Photoman should share the same event gallery slug');
+  const pmEventDir = join(tempRoot, 'Photoman', folderKey);
+  assert.equal(rRovingDesign.photomanPath, pmEventDir, 'photomanPath should point to Photoman/<Event>');
+  assert(existsSync(join(pmEventDir, 'Prints', '2_solo.jpg')), 'Photoman built-in Solo print should be saved in Photoman/<Event>/Prints/');
+  assert(!existsSync(join(pmEventDir, 'Solo Shots', '2_solo.jpg')), 'Photoman designed Solo print must NOT be placed in Solo Shots/');
+  assert(!existsSync(join(r1.folderPath, 'Prints', '2_solo.jpg')), 'Photoman print must NOT be placed in booth <Event>/Prints/');
+  assert(!existsSync(join(r1.folderPath, 'Solo Shots', '2_solo.jpg')), 'Photoman print must NOT be placed in booth <Event>/Solo Shots/');
 
   const rRovingSolo = await driveRequest({
     folderKey,
     filename: '2_solo_1.jpg',
     imageBase64: dummyPixelJpgBase64,
-    guestCode: 'guest-code-roving-456'
+    guestCode: 'guest-code-roving-456789',
+    photoman: true
   });
   assert(rRovingSolo.ok, 'Roving raw solo photo should be saved');
+  assert(existsSync(join(pmEventDir, 'Solo Shots', '2_solo_1.jpg')), 'Photoman solo shot should be saved in Photoman/<Event>/Solo Shots/');
+  assert(!existsSync(join(r1.folderPath, 'Solo Shots', '2_solo_1.jpg')), 'Photoman solo shot must NOT be placed in booth <Event>/Solo Shots/');
 
   const rResolve2 = await driveRequest({
     folderKey,
     resolveOnly: true
   });
-  assert.equal(rResolve2.nextSessionNumber, 3, 'Next session number should be 3 after session 2');
+  assert.equal(rResolve2.nextSessionNumber, 3, 'Next session number should be 3 after Photoman session 2');
 
   const stationList2 = await new Promise((resolve, reject) => {
     http.get(`http://127.0.0.1:${port}/station/${slug}/list`, (res) => {
@@ -204,7 +219,7 @@ try {
   const printFiles2 = stationList2.files.filter((f) => f.kind === 'photo');
   assert.equal(soloFiles2.length, 4, 'Should now have 4 solo photos total (3 booth + 1 roving)');
   assert.equal(printFiles2.length, 2, 'Should now have 2 print photos total (1 booth strip + 1 roving design print)');
-  console.log('PASS: Roving photoman uploads both designed print (2_solo.jpg) and raw solo photo (2_solo_1.jpg)');
+  console.log('PASS: Roving photoman saves to Photoman/<Event>/Prints & Solo Shots while keeping combined gallery & station');
 
   // 8. Test binary buffer upload path (used by offline desktop to avoid Base64 bloat)
   const rawBytes = Buffer.from(dummyPixelJpgBase64, 'base64');
@@ -218,23 +233,39 @@ try {
   assert(existsSync(join(rBin.folderPath, 'Prints', '3_strip.jpg')), 'Binary print should be saved in Prints/ subfolder');
   console.log('PASS: Binary buffer upload writes exact bytes without Base64 overhead');
 
-  // 9. Lossless PNG master: saved in its own Masters folder, and never seen by guests, the gallery, or any file route
+  // 9. Lossless PNG master: saved in its own Masters folder (both booth & Photoman), and never seen by guests, the gallery, or any file route
   const pngBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
   const rMaster = await driveRequest({ folderKey, filename: '3_strip_master.png', buffer: pngBytes, guestCode: 'guest-code-bin-7890123456' });
   assert(rMaster.ok, 'Master PNG should be saved');
   assert(existsSync(join(rMaster.folderPath, 'Masters', '3_strip_master.png')), 'Master goes in the Masters/ folder');
   assert(!existsSync(join(rMaster.folderPath, 'Prints', '3_strip_master.png')), 'and not in Prints/');
+  const rPmMaster = await driveRequest({ folderKey, filename: '2_solo_master.png', buffer: pngBytes, guestCode: 'guest-code-roving-456789', photoman: true });
+  assert(rPmMaster.ok, 'Photoman Master PNG should be saved');
+  assert(existsSync(join(pmEventDir, 'Masters', '2_solo_master.png')), 'Photoman master goes in Photoman/<Event>/Masters/');
+  assert(!existsSync(join(r1.folderPath, 'Masters', '2_solo_master.png')), 'Photoman master must not be in booth Masters/');
   const rResolve3 = await driveRequest({ folderKey, resolveOnly: true });
   assert.equal(rResolve3.nextSessionNumber, 4, 'a master does not change the session numbering (3_strip.jpg already made it 4)');
   const getText = (path) => new Promise((resolve, reject) => { http.get('http://127.0.0.1:' + port + path, (res) => { let d = ''; res.on('data', (c) => { d += c; }); res.on('end', () => resolve({ status: res.statusCode, body: d })); }).on('error', reject); });
   const guest3 = await getText('/o/guest-code-bin-7890123456');
   assert(guest3.body.includes('3_strip.jpg'), 'the guest still sees their print');
   assert(!/master/i.test(guest3.body), 'but the guest page never mentions the master');
+  const guestPm = await getText('/o/guest-code-roving-456789');
+  assert(guestPm.body.includes('2_solo.jpg') && guestPm.body.includes('2_solo_1.jpg'), 'Photoman guest page shows both print and solo shot');
+  assert(!/master/i.test(guestPm.body), 'Photoman guest page never mentions the master');
   const list3 = await getText('/station/' + slug + '/list');
   assert(!/master/i.test(list3.body), 'the gallery / station list never shows the master');
   const ctrl = await getText('/e/' + slug + '/f/3_strip.jpg');
-  assert.equal(ctrl.status, 200, 'control: the print is served');
-  for (const route of ['/e/' + slug + '/f/3_strip_master.png', '/o/guest-code-bin-7890123456/f/3_strip_master.png']) {
+  assert.equal(ctrl.status, 200, 'control: the booth print is served');
+  const pmPrintFile = await getText('/e/' + slug + '/f/2_solo.jpg');
+  assert.equal(pmPrintFile.status, 200, 'Photoman print file is served through combined gallery route');
+  const pmSoloFile = await getText('/e/' + slug + '/f/2_solo_1.jpg');
+  assert.equal(pmSoloFile.status, 200, 'Photoman solo shot file is served through combined gallery route');
+  const pmGallery = await getText('/e/' + slug + '/');
+  assert(pmGallery.body.includes('2_solo.jpg') && pmGallery.body.includes('2_solo_1.jpg') && pmGallery.body.includes('1_strip.jpg'), 'Combined gallery HTML lists both booth and Photoman photos');
+  const studio = studioList(slug);
+  assert(studio.some((x) => x.name === '2_solo.jpg') && studio.some((x) => x.name === '2_solo_1.jpg'), 'Arrange & Print lists Photoman files');
+  assert(studioRead(slug, '2_solo.jpg') && studioRead(slug, '2_solo_1.jpg'), 'Arrange & Print reads Photoman files');
+  for (const route of ['/e/' + slug + '/f/3_strip_master.png', '/o/guest-code-bin-7890123456/f/3_strip_master.png', '/e/' + slug + '/f/2_solo_master.png', '/o/guest-code-roving-456789/f/2_solo_master.png']) {
     const r = await getText(route);
     assert.equal(r.status, 404, route + ' must not serve the master (got ' + r.status + ')');
   }
@@ -244,6 +275,37 @@ try {
   const pgCtrl = await getText('/e/' + slug + '/p/3_strip.jpg');
   assert(/<img/i.test(pgCtrl.body), 'control: the print page shows its image');
   console.log('PASS: PNG master is kept in Masters/ for the operator only (not on guest pages, gallery, numbering, or any file route)');
+
+  // 10. Cross-folder collision safety + custom Photoman template + subfoldered Bonus event
+  const rCollide = await driveRequest({
+    folderKey,
+    filename: '1_strip.jpg',
+    buffer: rawBytes,
+    photoman: true
+  });
+  assert(rCollide.ok, 'Colliding Photoman filename should be renamed cleanly');
+  assert.equal(rCollide.fileId, `${slug}/1_strip (2).jpg`, 'Photoman file colliding with booth filename should get (2) suffix');
+  assert(existsSync(join(pmEventDir, 'Prints', '1_strip (2).jpg')), 'Renamed Photoman print saved in Photoman/<Event>/Prints/');
+  assert.equal((await getText('/e/' + slug + '/f/1_strip%20(2).jpg')).status, 200, 'Renamed Photoman print is served without shadowing booth 1_strip.jpg');
+
+  const rPmCustom = await driveRequest({
+    folderKey,
+    subfolder: 'Bonus',
+    filename: 'BONUS_1_pm_polaroid.jpg',
+    buffer: rawBytes,
+    photoman: true
+  });
+  const rPmCustomSolo = await driveRequest({
+    folderKey,
+    subfolder: 'Bonus',
+    filename: 'BONUS_1_solo_1.jpg',
+    buffer: rawBytes,
+    photoman: true
+  });
+  assert(rPmCustom.ok && rPmCustomSolo.ok, 'Bonus Photoman files should save');
+  assert(existsSync(join(tempRoot, 'Photoman', folderKey, 'Bonus', 'Prints', 'BONUS_1_pm_polaroid.jpg')), 'Bonus Photoman print saved under Photoman/<Event>/Bonus/Prints/');
+  assert(existsSync(join(tempRoot, 'Photoman', folderKey, 'Bonus', 'Solo Shots', 'BONUS_1_solo_1.jpg')), 'Bonus Photoman solo saved under Photoman/<Event>/Bonus/Solo Shots/');
+  console.log('PASS: Cross-folder collision safety and subfoldered Photoman events verified');
 
   console.log('\nAll Solo Photos tests passed successfully!');
 } finally {

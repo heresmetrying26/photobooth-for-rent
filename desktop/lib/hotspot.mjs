@@ -5,7 +5,7 @@
 // Microsoft's loopback adapter once.
 // Mac: `setup` adds an offline loopback service (BoothDummy) once with administrator privileges, unlocking macOS
 // Internet Sharing to Wi-Fi without external internet, routing on bridge100.
-import { tmpdir, platform, networkInterfaces } from 'node:os';
+import { tmpdir, platform, networkInterfaces, setPriority, constants as osConstants } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, openSync, writeSync, fsyncSync, closeSync } from 'node:fs';
 import { spawn, execFile } from 'node:child_process';
@@ -15,16 +15,90 @@ const IS_WIN = platform() === 'win32';
 const IS_MAC = platform() === 'darwin';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 export const HOTSPOT_IP = '192.168.137.1';   // where Windows puts the laptop on its hotspot
+export const TARGET_MAX_CLIENTS = 20;        // Windows WifiMaxPeers target (default OS cap is 8)
+export const RECYCLE_COOLDOWN_MS = 180_000;  // never auto-clear more than once per 3 minutes (protects Wi-Fi drivers)
+export const RECYCLE_MAX_PER_HOUR = 10;      // hard hourly circuit breaker so flaky drivers are never hammered
+export const RECYCLE_IDLE_FULL_MS = 30_000;  // wait 30 s after last guest HTTP activity before clearing at cap
+export const RECYCLE_IDLE_NEAR_MS = 120_000; // wait 2 min idle before proactively clearing at cap - 1 (only when cap <= 8)
+export const RECYCLE_JOIN_GRACE_MS = 40_000; // never auto-clear within 40 s of a new phone joining
 let log = (m) => console.log('[hotspot] ' + m);
 let cfgStore = { get: () => ({}), save: () => {} };
-const st = { busy: false, error: '', needsSetup: false, started: false, fails: 0,
-  driverUnsupported: false, clients: 0, maxClients: 8, venueWifi: '' };   // Option 4: set true when this laptop can't (or must not) host
+const st = { busy: false, recycling: false, error: '', needsSetup: false, started: false, fails: 0,
+  driverUnsupported: false, clients: 0, maxClients: 8, hwMaxClients: 0, regMaxClients: 0, venueWifi: '',
+  lastClientJoinAt: 0, lastRecycleAt: 0, recycleCount: 0, recycleTimestamps: [], autoRecyclePaused: false,
+  recycleBlockedByStation: false, activeDownloads: 0 };   // Option 4: set true when this laptop can't (or must not) host
 let keepTimer = null;
 let keepTick = 0;
 let offlineCheck = () => true;
+let trafficCheck = () => ({ activeTransfers: 0, lastGuestActivityAt: 0, stationOnHotspot: false });
 // main.mjs passes this in: the page is told when the hotspot changes, so it does not have to keep asking.
 let notify = () => {};
 function ping() { try { notify(hotspotInfo()); } catch { /* ignore */ } }
+
+// Parse `netsh wlan show wirelesscapabilities` for the hardware/driver P2P GO client cap.
+// Returns the highest numeric `P2P Max Mobile AP Clients` found, or 0 if unavailable / localized.
+export function parseHwMaxClients(output) {
+  const txt = String(output || '');
+  let best = 0;
+  const re = /P2P\s+Max\s+Mobile\s+AP\s+Clients\s*:\s*(\d+)/gi;
+  let m;
+  while ((m = re.exec(txt))) {
+    const n = Number(m[1]);
+    if (Number.isFinite(n) && n > best && n <= 256) best = n;
+  }
+  return best;
+}
+
+// Effective simultaneous client ceiling before phones may start failing:
+// if the Wi-Fi adapter advertises a lower hardware/driver cap (e.g. Intel AX201 reports 8)
+// than Windows' software MaxClientCount (e.g. 20), watch the lower cap for smart idle-slot clearing.
+export function computeEffectiveCap(maxClients, hwMaxClients) {
+  const sw = Number(maxClients) > 0 ? Number(maxClients) : 8;
+  const hw = Number(hwMaxClients) > 0 ? Number(hwMaxClients) : 0;
+  return hw > 0 ? Math.min(sw, hw) : sw;
+}
+
+// Pure decision helper for automatic idle-phone slot clearing (unit-testable).
+// Returns { shouldRecycle: boolean, reason: string, blockedByStation: boolean }.
+export function evaluateAutoRecycle({
+  enabled = true,
+  paused = false,
+  hadCrash = false,
+  clients = 0,
+  maxClients = 8,
+  hwMaxClients = 0,
+  activeTransfers = 0,
+  lastGuestActivityAt = 0,
+  lastClientJoinAt = 0,
+  lastRecycleAt = 0,
+  recyclesLastHour = 0,
+  stationOnHotspot = false,
+  now = Date.now()
+} = {}) {
+  const cap = computeEffectiveCap(maxClients, hwMaxClients);
+  const allowNear = cap <= 8;
+  const threshold = allowNear ? Math.max(1, cap - 1) : cap;
+  if (!enabled || paused || hadCrash || clients <= 0) {
+    return { shouldRecycle: false, reason: hadCrash ? 'crash-guard' : (paused ? 'paused' : 'disabled-or-empty'), blockedByStation: false };
+  }
+  if (clients < threshold) return { shouldRecycle: false, reason: 'below-threshold', blockedByStation: false };
+  if (stationOnHotspot) return { shouldRecycle: false, reason: 'station-connected', blockedByStation: true };
+  if (activeTransfers > 0) return { shouldRecycle: false, reason: 'active-transfer', blockedByStation: false };
+  if (recyclesLastHour >= RECYCLE_MAX_PER_HOUR) {
+    return { shouldRecycle: false, reason: 'hourly-limit', blockedByStation: false };
+  }
+  if (lastRecycleAt > 0 && now - lastRecycleAt < RECYCLE_COOLDOWN_MS) {
+    return { shouldRecycle: false, reason: 'cooldown', blockedByStation: false };
+  }
+  if (lastClientJoinAt > 0 && now - lastClientJoinAt < RECYCLE_JOIN_GRACE_MS) {
+    return { shouldRecycle: false, reason: 'recent-join', blockedByStation: false };
+  }
+  const idleMs = lastGuestActivityAt > 0 ? (now - lastGuestActivityAt) : Infinity;
+  const isFull = clients >= cap;
+  const needIdleMs = isFull ? RECYCLE_IDLE_FULL_MS : RECYCLE_IDLE_NEAR_MS;
+  if (idleMs < needIdleMs) return { shouldRecycle: false, reason: 'recent-activity', blockedByStation: false };
+  return { shouldRecycle: true, reason: isFull ? 'full-idle' : 'near-full-idle', blockedByStation: false };
+}
 
 // Crash guard: a small file that exists only while Windows is starting the hotspot. If the app finds it at launch,
 // the laptop went down in the middle of a start (a Wi-Fi driver blue screen does exactly that). It is its own file,
@@ -93,12 +167,20 @@ try {
     } catch { }
     return ''
   }
+  function GetRegMax {
+    try {
+      $v = (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings' -Name 'WifiMaxPeers' -ErrorAction SilentlyContinue).WifiMaxPeers
+      if ($v -ne $null) { return [int]$v }
+    } catch { }
+    return 0
+  }
   $script:usingLoopback = $false
   function GetMgr {
     $mgrType = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]
     if ($PreferOffline) {
       try {
-        $lbIds = @(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'photobooth4u Loopback' -or $_.InterfaceDescription -like '*KM-TEST Loopback*' } | ForEach-Object { ([string]$_.InterfaceGuid).Trim('{}').ToLowerInvariant() })
+        # Pure in-process .NET lookup (~90 ms, zero WMI/CIM overhead on normal laptops)
+        $lbIds = @([System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.Name -eq 'photobooth4u Loopback' -or $_.Description -like '*KM-TEST Loopback*' } | ForEach-Object { ([string]$_.Id).Trim('{}').ToLowerInvariant() })
         if ($lbIds.Count -gt 0) {
           foreach ($q in [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles()) {
             try {
@@ -124,7 +206,7 @@ try {
   if ($Mode -eq 'status') {
     $m = GetMgr
     $mc = 8; try { $mc = [int]$m.MaxClientCount } catch { }
-    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; venueWifi = (GetVenueWifi) }
+    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; regMaxClients = (GetRegMax); venueWifi = (GetVenueWifi) }
   }
   elseif ($Mode -eq 'stop') {
     try {
@@ -133,6 +215,31 @@ try {
     } catch { }
     Say @{ ok = $true }
   }
+  elseif ($Mode -eq 'recycle') {
+    $m = GetMgr
+    if ($m.TetheringOperationalState -eq 'On') {
+      $null = AwaitOp ($m.StopTetheringAsync()) $opResult
+      Start-Sleep -Milliseconds 2000
+    }
+    if ($Ssid -and $Pass) {
+      $decSsid = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Ssid))
+      $decPass = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Pass))
+      $cfg = $m.GetCurrentAccessPointConfiguration()
+      if ($cfg.Ssid -ne $decSsid -or $cfg.Passphrase -ne $decPass) {
+        $cfg.Ssid = $decSsid
+        $cfg.Passphrase = $decPass
+        AwaitAct ($m.ConfigureAccessPointAsync($cfg))
+      }
+    }
+    $r = AwaitOp ($m.StartTetheringAsync()) $opResult
+    if ($r.Status -ne 'Success') {
+      Start-Sleep -Milliseconds 1500
+      $r = AwaitOp ($m.StartTetheringAsync()) $opResult
+    }
+    if ($r.Status -ne 'Success') { throw ('recycle-failed ' + $r.Status + ' ' + $r.AdditionalErrorMessage) }
+    $mc = 8; try { $mc = [int]$m.MaxClientCount } catch { }
+    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; regMaxClients = (GetRegMax); venueWifi = (GetVenueWifi) }
+  }
   elseif ($Mode -eq 'start') {
     $Ssid = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Ssid))
     $Pass = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Pass))
@@ -140,7 +247,7 @@ try {
     $cfg = $m.GetCurrentAccessPointConfiguration()
     $same = ($cfg.Ssid -eq $Ssid -and $cfg.Passphrase -eq $Pass)
     $mc = 8; try { $mc = [int]$m.MaxClientCount } catch { }
-    if ($m.TetheringOperationalState -eq 'On' -and $same) { Say @{ ok = $true; state = 'On'; already = $true; clients = [int]$m.ClientCount; maxClients = $mc; venueWifi = (GetVenueWifi) }; exit 0 }
+    if ($m.TetheringOperationalState -eq 'On' -and $same) { Say @{ ok = $true; state = 'On'; already = $true; clients = [int]$m.ClientCount; maxClients = $mc; regMaxClients = (GetRegMax); venueWifi = (GetVenueWifi) }; exit 0 }
     if ($m.TetheringOperationalState -eq 'On') { $null = AwaitOp ($m.StopTetheringAsync()) $opResult }
     $cfg.Ssid = $Ssid
     $cfg.Passphrase = $Pass
@@ -156,7 +263,7 @@ try {
     AwaitAct ($m.ConfigureAccessPointAsync($cfg))
     $r = AwaitOp ($m.StartTetheringAsync()) $opResult
     if ($r.Status -ne 'Success') { throw ('start-failed ' + $r.Status + ' ' + $r.AdditionalErrorMessage) }
-    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; venueWifi = $vWifi }
+    Say @{ ok = $true; state = [string]$m.TetheringOperationalState; clients = [int]$m.ClientCount; maxClients = $mc; regMaxClients = (GetRegMax); venueWifi = $vWifi }
   }
   else { Say @{ ok = $false; error = 'unknown mode' } }
 } catch {
@@ -221,7 +328,25 @@ public static class Pb4uLoop {
     New-NetIPAddress -InterfaceIndex $ad.ifIndex -IPAddress 10.254.254.1 -PrefixLength 24 -ErrorAction Stop | Out-Null
   }
   $res.loopback = $true
-  # Option 1: disable Windows 10 mobile hotspot auto-off (stops hosting after ~5 min of idle).
+  # Disable Windows Mobile Hotspot idle auto-off AND raise default 8-phone cap to 20 (icssvc\Settings).
+  try {
+    $icsKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings'
+    if (-not (Test-Path $icsKey)) { New-Item -Path $icsKey -Force | Out-Null }
+    Set-ItemProperty -Path $icsKey -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    $curMax = 0
+    try { $curMax = [int](Get-ItemProperty -Path $icsKey -Name 'WifiMaxPeers' -ErrorAction SilentlyContinue).WifiMaxPeers } catch { }
+    if ($curMax -lt 20) {
+      Set-ItemProperty -Path $icsKey -Name 'WifiMaxPeers' -Value 20 -Type DWord -ErrorAction SilentlyContinue
+      $res.wifiMaxPeers = 20
+      try {
+        $svc = Get-Service -Name 'icssvc' -ErrorAction SilentlyContinue
+        if ($svc -and $svc.Status -ne 'Stopped') { Stop-Service -Name 'icssvc' -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 1000 }
+        Start-Service -Name 'icssvc' -ErrorAction SilentlyContinue
+      } catch { }
+    } else {
+      $res.wifiMaxPeers = $curMax
+    }
+  } catch { }
   try { Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters' -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue } catch { }
   $res.ok = $true
 } catch { $res.error = [string]$_.Exception.Message }
@@ -248,7 +373,49 @@ try {
   netsh advfirewall firewall add rule name="photobooth4u local booth" dir=in action=allow program="$exe" protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
   netsh advfirewall firewall delete rule name="photobooth4u local booth port" | Out-Null
   netsh advfirewall firewall add rule name="photobooth4u local booth port" dir=in action=allow protocol=TCP localport=47777-47797 enable=yes profile=any remoteip=192.168.137.0/24,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12 | Out-Null
+  try {
+    $icsKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings'
+    if (-not (Test-Path $icsKey)) { New-Item -Path $icsKey -Force | Out-Null }
+    Set-ItemProperty -Path $icsKey -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    $curMax = 0
+    try { $curMax = [int](Get-ItemProperty -Path $icsKey -Name 'WifiMaxPeers' -ErrorAction SilentlyContinue).WifiMaxPeers } catch { }
+    if ($curMax -lt 20) {
+      Set-ItemProperty -Path $icsKey -Name 'WifiMaxPeers' -Value 20 -Type DWord -ErrorAction SilentlyContinue
+    }
+  } catch { }
   try { Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters' -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue } catch { }
+  $res.ok = $true
+} catch { $res.error = [string]$_.Exception.Message }
+($res | ConvertTo-Json -Compress) | Set-Content -Path $out -Encoding UTF8
+`;
+
+// Elevated 1-time capacity boost (Windows): raises icssvc\Settings\WifiMaxPeers from default 8 to 20,
+// disables PeerlessTimeoutEnabled in icssvc\Settings, and restarts icssvc so the higher cap applies immediately with no reboot.
+const BOOST_LIMIT_PS = String.raw`$ErrorActionPreference = 'Stop'
+$out = '@OUT@'
+$target = [int]'@MAX@'
+if ($target -lt 8) { $target = 8 }
+if ($target -gt 32) { $target = 32 }
+$res = @{ ok = $false; wifiMaxPeers = 0; serviceRestarted = $false; error = '' }
+try {
+  $icsKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\icssvc\Settings'
+  if (-not (Test-Path $icsKey)) { New-Item -Path $icsKey -Force | Out-Null }
+  Set-ItemProperty -Path $icsKey -Name 'WifiMaxPeers' -Value $target -Type DWord -ErrorAction Stop
+  Set-ItemProperty -Path $icsKey -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue
+  try { Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters' -Name 'PeerlessTimeoutEnabled' -Value 0 -Type DWord -ErrorAction SilentlyContinue } catch { }
+  try {
+    $svc = Get-Service -Name 'icssvc' -ErrorAction SilentlyContinue
+    if ($svc -and $svc.Status -ne 'Stopped') {
+      Stop-Service -Name 'icssvc' -ErrorAction SilentlyContinue
+      Start-Sleep -Milliseconds 1000
+    }
+    Start-Service -Name 'icssvc' -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 800
+    $res.serviceRestarted = $true
+  } catch { }
+  $readBack = 0
+  try { $readBack = [int](Get-ItemProperty -Path $icsKey -Name 'WifiMaxPeers' -ErrorAction SilentlyContinue).WifiMaxPeers } catch { }
+  $res.wifiMaxPeers = if ($readBack -gt 0) { $readBack } else { $target }
   $res.ok = $true
 } catch { $res.error = [string]$_.Exception.Message }
 ($res | ConvertTo-Json -Compress) | Set-Content -Path $out -Encoding UTF8
@@ -260,6 +427,8 @@ function runPs(args, timeout) {
     let out = '', err = '', p, done = false;
     const fin = (r) => { if (!done) { done = true; clearTimeout(t); resolve(r); } };
     try { p = spawn('powershell.exe', args, { windowsHide: true }); } catch (e) { resolve({ code: -1, out: '', err: String(e && e.message || e) }); return; }
+    // Lower priority so background PowerShell polls never preempt Electron UI, DSLR Live View, or printing on normal laptops.
+    try { if (p && p.pid && osConstants && osConstants.priority) setPriority(p.pid, osConstants.priority.PRIORITY_BELOW_NORMAL); } catch { /* ignore */ }
     const t = setTimeout(() => { try { p.kill(); } catch { /* ignore */ } fin({ code: -2, out, err: 'timed out' }); }, timeout || 60000);
     p.stdout.on('data', (d) => { out += d; });
     p.stderr.on('data', (d) => { err += d; });
@@ -296,19 +465,31 @@ const rand = (n) => Array.from({ length: n }, () => SAFE[randomInt(SAFE.length)]
 // ("Hosted network supported" in that report is NOT used: it is the old Windows 7 feature and says No on most
 // laptops whose Mobile hotspot works fine.)
 let hwCache = null;
+function readRegWifiMaxPeers() {
+  if (!IS_WIN) return Promise.resolve(0);
+  return new Promise((resolve) => {
+    execFile('reg', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\icssvc\\Settings', '/v', 'WifiMaxPeers'], { timeout: 4000, windowsHide: true, encoding: 'utf8' }, (err, stdout) => {
+      const m = /WifiMaxPeers\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(String(stdout || ''));
+      resolve(m ? parseInt(m[1], 16) : 0);
+    });
+  });
+}
 function probeWifi() {
-  if (!IS_WIN) return Promise.resolve({ wifi: true, sig: '' });
+  if (!IS_WIN) return Promise.resolve({ wifi: true, sig: '', hwMaxClients: 0, regMaxClients: 0 });
   if (hwCache) return Promise.resolve(hwCache);
   return new Promise((resolve) => {
-    execFile('netsh', ['wlan', 'show', 'drivers'], { timeout: 6000, windowsHide: true, encoding: 'utf8' }, (err, stdout) => {
-      const out = String(stdout || '');
+    const pDrivers = new Promise((r) => execFile('netsh', ['wlan', 'show', 'drivers'], { timeout: 6000, windowsHide: true, encoding: 'utf8' }, (err, stdout) => r(String(stdout || ''))));
+    const pCaps = new Promise((r) => execFile('netsh', ['wlan', 'show', 'wirelesscapabilities'], { timeout: 6000, windowsHide: true, encoding: 'utf8' }, (err, stdout) => r(String(stdout || ''))));
+    Promise.all([pDrivers, pCaps, readRegWifiMaxPeers()]).then(([out, capsOut, regMax]) => {
       const wifi = !/no wireless interface/i.test(out);
       const flat = out.replace(/\s+/g, ' ').trim();
       const sig = wifi && flat ? createHash('sha1').update(flat).digest('hex').slice(0, 16) : '';
       const pick = (k) => { const m = new RegExp('^\\s*' + k + '\\s*:\\s*(.+)$', 'im').exec(out); return m ? m[1].trim() : ''; };
+      const hwMaxClients = wifi ? parseHwMaxClients(capsOut) : 0;
+      const regMaxClients = Number(regMax) || 0;
       if (!wifi) log('No Wi-Fi interface detected on this machine');
-      else log('wi-fi driver: ' + ([pick('Driver'), pick('Vendor'), pick('Version'), pick('Date')].filter(Boolean).join(' | ') || 'unknown') + ' [' + (sig || 'no report') + ']');
-      hwCache = { wifi, sig };
+      else log('wi-fi driver: ' + ([pick('Driver'), pick('Vendor'), pick('Version'), pick('Date')].filter(Boolean).join(' | ') || 'unknown') + ' [' + (sig || 'no report') + ']' + (hwMaxClients ? ' hwMaxClients=' + hwMaxClients : '') + (regMaxClients ? ' regWifiMaxPeers=' + regMaxClients : ''));
+      hwCache = { wifi, sig, hwMaxClients, regMaxClients };
       resolve(hwCache);
     });
   });
@@ -348,14 +529,16 @@ export function hotspotUp() {
 }
 
 // ---------- what main.mjs uses ----------
-export function initHotspot({ get, save, logger, dir, onChange, skipAuto, isOffline }) {
+export function initHotspot({ get, save, logger, dir, onChange, skipAuto, isOffline, getTraffic }) {
   if (logger) log = logger;
   if (typeof onChange === 'function') notify = onChange;
   if (typeof isOffline === 'function') offlineCheck = isOffline;
+  if (typeof getTraffic === 'function') trafficCheck = getTraffic;
   cfgStore = { get, save };
   const c = get();
   // A name and password made once per laptop (not one shared by every booth).
   if (!c.ssid || !c.pass) { c.ssid = 'photobooth4u-' + rand(4); c.pass = rand(10); }
+  if (typeof c.autoRecycle !== 'boolean') c.autoRecycle = true;   // smart crowd slot recycling ON by default
   c.on = false;   // it was switched off when the app last closed
 
   // Crash guard: the marker is still there, so the laptop (or the app) went down during the last start.
@@ -367,13 +550,19 @@ export function initHotspot({ get, save, logger, dir, onChange, skipAuto, isOffl
       clearMark();
       c.crashes = (c.crashes || 0) + 1;
       c.auto = false;   // never start by itself again after that
-      log('the last hotspot start never finished (crash?) - count ' + c.crashes + ', auto-start switched off');
+      c.autoRecycle = false;   // never auto-cycle a Wi-Fi driver that crashed
+      log('the last hotspot start never finished (crash?) - count ' + c.crashes + ', auto-start & auto-clear switched off');
     }
   }
   save();
 
   if (IS_WIN) {
-    probeWifi().then(({ wifi, sig }) => {
+    probeWifi().then(({ wifi, sig, hwMaxClients, regMaxClients }) => {
+      if (hwMaxClients > 0) st.hwMaxClients = hwMaxClients;
+      if (regMaxClients > 0) {
+        st.regMaxClients = regMaxClients;
+        if (st.maxClients < regMaxClients) st.maxClients = regMaxClients;
+      }
       // A different driver (updated, or another card) gets a fresh chance.
       if (c.unsafe && sig && c.unsafeSig && sig !== c.unsafeSig) {
         c.unsafe = false; c.unsafeSig = ''; c.crashes = 0; save();
@@ -411,10 +600,22 @@ export function initHotspot({ get, save, logger, dir, onChange, skipAuto, isOffl
 export function hotspotInfo() {
   const c = cfgStore.get();
   const up = (IS_WIN || IS_MAC) && hotspotUp();
+  const maxClients = st.maxClients || 8;
+  const hwMaxClients = st.hwMaxClients || 0;
+  const regMaxClients = st.regMaxClients || 0;
+  const effectiveMaxClients = computeEffectiveCap(maxClients, hwMaxClients);
   return {
     supported: IS_WIN || IS_MAC, ssid: c.ssid || '', pass: c.pass || '', auto: !!c.auto,
-    on: up, wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup,
-    clients: up ? (st.clients || 0) : 0, maxClients: st.maxClients || 8, venueWifi: up ? (st.venueWifi || '') : '',
+    on: up, wanted: !!c.on, busy: st.busy, recycling: !!st.recycling, error: st.error, needsSetup: st.needsSetup,
+    clients: up ? (st.clients || 0) : 0, maxClients, hwMaxClients, regMaxClients, effectiveMaxClients,
+    targetMaxClients: TARGET_MAX_CLIENTS,
+    canBoostLimit: IS_WIN && !st.driverUnsupported && maxClients < TARGET_MAX_CLIENTS && regMaxClients < TARGET_MAX_CLIENTS,
+    autoRecycle: c.autoRecycle !== false,
+    lastRecycleAt: st.lastRecycleAt || 0,
+    recycleCount: st.recycleCount || 0,
+    recycleBlockedByStation: up ? !!st.recycleBlockedByStation : false,
+    activeDownloads: up ? (st.activeDownloads || 0) : 0,
+    venueWifi: up ? (st.venueWifi || '') : '',
     // Windows applies the name and password itself, so the operator can choose them. On a Mac, Internet Sharing keeps
     // its own name and password (System Settings → Sharing → Wi-Fi Options), so the app doesn't know the real ones.
     canCustom: IS_WIN, external: IS_MAC, driverUnsupported: !!st.driverUnsupported
@@ -511,8 +712,9 @@ export async function hotspotStart() {
       st.started = true; st.fails = 0;
       if (typeof r.clients === 'number') st.clients = r.clients;
       if (typeof r.maxClients === 'number' && r.maxClients > 0) st.maxClients = r.maxClients;
+      if (typeof r.regMaxClients === 'number' && r.regMaxClients >= 0) st.regMaxClients = r.regMaxClients;
       st.venueWifi = typeof r.venueWifi === 'string' ? r.venueWifi : '';
-      log('on: ' + c.ssid + (st.venueWifi ? ' (warning: also connected to venue Wi-Fi "' + st.venueWifi + '")' : ''));
+      log('on: ' + c.ssid + ' (maxClients=' + st.maxClients + (st.hwMaxClients ? ', hwMax=' + st.hwMaxClients : '') + ')' + (st.venueWifi ? ' (warning: also connected to venue Wi-Fi "' + st.venueWifi + '")' : ''));
       if (c.crashes) { c.crashes = 0; cfgStore.save(); }
     }
     else {
@@ -615,7 +817,8 @@ export function hotspotStopOnQuit() {
 }
 
 // Windows & Mac keepalive: if the hotspot goes off while wanted, start it again quickly (15 s),
-// and poll connected guest count + venue Wi-Fi conflicts every 30 s while active on Windows.
+// poll connected guest count + venue Wi-Fi conflicts (every 15 s under crowd load, else 30 s),
+// and auto-clear stale idle phones when approaching capacity so guests never stall at 8+.
 let lastUp = false;
 let statusPolling = false;
 function keepAlive() {
@@ -625,24 +828,64 @@ function keepAlive() {
     keepTick++;
     // Tell the page when the hotspot went on or off by itself (reading the network list costs nothing).
     const up = hotspotUp();
-    if (up !== lastUp) {
+    if (up !== lastUp && !st.recycling) {
       lastUp = up;
-      if (!up) { st.clients = 0; st.venueWifi = ''; }
+      if (!up) { st.clients = 0; st.venueWifi = ''; st.recycleBlockedByStation = false; st.activeDownloads = 0; }
       ping();
     }
     if (!c.on || st.busy || st.driverUnsupported || st.fails >= 2) return;
     if (up) {
-      if (IS_WIN && !statusPolling && (keepTick % 2 === 0)) {
+      const effectiveCap = computeEffectiveCap(st.maxClients, st.hwMaxClients);
+      const nearCap = st.clients >= Math.max(1, effectiveCap - 1);
+      const quietIdle = st.clients === 0 && (Date.now() - lastSession > 2 * 60 * 1000);
+      // Calm CPU-friendly cadence: 60 s when idle with 0 phones, 30 s normally, 15 s only when nearly/at full capacity.
+      const due = nearCap || (!quietIdle && (keepTick % 2 === 0)) || (quietIdle && (keepTick % 4 === 0));
+      if (IS_WIN && !statusPolling && due) {
         statusPolling = true;
         const preferOffline = !!(typeof offlineCheck === 'function' && offlineCheck());
         tether('status', '', '', 12000, preferOffline).then((r) => {
           if (!r || !r.ok) return;
+          const now = Date.now();
+          const prevClients = st.clients;
           const nextClients = typeof r.clients === 'number' ? r.clients : st.clients;
           const nextMax = (typeof r.maxClients === 'number' && r.maxClients > 0) ? r.maxClients : st.maxClients;
+          const nextReg = (typeof r.regMaxClients === 'number' && r.regMaxClients >= 0) ? r.regMaxClients : st.regMaxClients;
           const nextVenue = typeof r.venueWifi === 'string' ? r.venueWifi : st.venueWifi;
-          if (nextClients !== st.clients || nextMax !== st.maxClients || nextVenue !== st.venueWifi) {
-            st.clients = nextClients; st.maxClients = nextMax; st.venueWifi = nextVenue;
-            ping();
+          if (nextClients > prevClients) st.lastClientJoinAt = now;
+          if (nextClients === 0) st.lastClientJoinAt = 0;
+          const traffic = (() => {
+            try { return (typeof trafficCheck === 'function' && trafficCheck()) || {}; } catch { return {}; }
+          })();
+          const nextActiveDl = Number(traffic.activeTransfers) || 0;
+          st.recycleTimestamps = (st.recycleTimestamps || []).filter((t) => now - t < 3600_000);
+          const decision = evaluateAutoRecycle({
+            enabled: c.autoRecycle !== false,
+            paused: !!st.autoRecyclePaused,
+            hadCrash: (c.crashes || 0) > 0 || !!c.unsafe,
+            clients: nextClients,
+            maxClients: nextMax,
+            hwMaxClients: st.hwMaxClients,
+            activeTransfers: nextActiveDl,
+            lastGuestActivityAt: Number(traffic.lastGuestActivityAt) || 0,
+            lastClientJoinAt: st.lastClientJoinAt,
+            lastRecycleAt: st.lastRecycleAt,
+            recyclesLastHour: st.recycleTimestamps.length,
+            stationOnHotspot: !!traffic.stationOnHotspot,
+            now
+          });
+          const changed = nextClients !== st.clients || nextMax !== st.maxClients || nextReg !== st.regMaxClients
+            || nextVenue !== st.venueWifi || nextActiveDl !== st.activeDownloads
+            || !!decision.blockedByStation !== !!st.recycleBlockedByStation;
+          st.clients = nextClients;
+          st.maxClients = nextMax;
+          st.regMaxClients = nextReg;
+          st.venueWifi = nextVenue;
+          st.activeDownloads = nextActiveDl;
+          st.recycleBlockedByStation = !!decision.blockedByStation;
+          if (changed) ping();
+          if (decision.shouldRecycle && !st.busy) {
+            log('auto-clearing idle phones (' + nextClients + '/' + computeEffectiveCap(nextMax, st.hwMaxClients) + ', reason=' + decision.reason + ')');
+            hotspotRecycle({ auto: true }).catch(() => {});
           }
         }).catch(() => {}).finally(() => { statusPolling = false; });
       }
@@ -662,6 +905,162 @@ export function hotspotSetAuto(on) {
   const c = cfgStore.get();
   c.auto = !!on; cfgStore.save();
   return hotspotInfo();
+}
+
+export function hotspotSetAutoRecycle(on) {
+  const c = cfgStore.get();
+  c.autoRecycle = !!on; cfgStore.save();
+  ping();
+  return hotspotInfo();
+}
+
+// Quickly cycles the Windows Mobile Hotspot in a single WinRT session (~2-3 s) to drop lingering idle
+// pocket phones while keeping the same SSID, password, IP (192.168.137.1), and Join QR code.
+export async function hotspotRecycle({ auto = false } = {}) {
+  if (!IS_WIN) return { ok: false, error: 'Clearing idle phones is only supported on Windows.', info: hotspotInfo() };
+  if (st.driverUnsupported) return { ok: false, error: st.error || 'Wi-Fi adapter does not support hotspot.', info: hotspotInfo() };
+  if (st.busy) return { ok: false, error: 'The Wi-Fi is busy. Try again in a moment.', info: hotspotInfo() };
+  const c = cfgStore.get();
+  if (!hotspotUp()) return { ok: false, error: 'The booth Wi-Fi is not running.', info: hotspotInfo() };
+  // For manual clicks, briefly wait up to 4 s if a guest photo download is actively streaming.
+  if (!auto) {
+    for (let i = 0; i < 8; i++) {
+      let tr = null;
+      try { tr = typeof trafficCheck === 'function' ? trafficCheck() : null; } catch { tr = null; }
+      if (!tr || !tr.activeTransfers) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  const prevClients = st.clients || 0;
+  st.busy = true;
+  st.recycling = true;
+  st.error = '';
+  ping();
+  let needFallbackStart = false;
+  try {
+    markStart();
+    const preferOffline = !!(typeof offlineCheck === 'function' && offlineCheck());
+    const r = await tether('recycle', c.ssid, c.pass, 45000, preferOffline);
+    if (r && r.ok) {
+      st.started = true;
+      st.fails = 0;
+      st.clients = typeof r.clients === 'number' ? r.clients : 0;
+      if (typeof r.maxClients === 'number' && r.maxClients > 0) st.maxClients = r.maxClients;
+      if (typeof r.regMaxClients === 'number' && r.regMaxClients >= 0) st.regMaxClients = r.regMaxClients;
+      st.venueWifi = typeof r.venueWifi === 'string' ? r.venueWifi : st.venueWifi;
+      st.lastRecycleAt = Date.now();
+      st.recycleCount = (st.recycleCount || 0) + 1;
+      if (auto) {
+        st.recycleTimestamps = (st.recycleTimestamps || []).filter((t) => st.lastRecycleAt - t < 3600_000);
+        st.recycleTimestamps.push(st.lastRecycleAt);
+      } else {
+        st.autoRecyclePaused = false;
+      }
+      st.lastClientJoinAt = 0;
+      st.recycleBlockedByStation = false;
+      log((auto ? 'auto-' : '') + 'cleared ' + prevClients + ' idle phone(s); back on (' + st.clients + '/' + st.maxClients + ')');
+      return { ok: true, cleared: prevClients, info: hotspotInfo() };
+    }
+    if (auto) {
+      st.autoRecyclePaused = true;
+      log('auto-recycle paused for this run after driver error (' + String((r && r.error) || 'unknown') + ')');
+    } else {
+      log('recycle failed (' + String((r && r.error) || 'unknown') + ') - recovering with full start');
+    }
+    needFallbackStart = true;
+  } catch (e) {
+    if (auto) st.autoRecyclePaused = true;
+    log('recycle threw (' + String(e && e.message || e) + ') - recovering with full start');
+    needFallbackStart = true;
+  } finally {
+    clearMark();
+    st.recycling = false;
+    st.busy = false;
+    ping();
+  }
+  if (needFallbackStart) {
+    const info = await hotspotStart();
+    if (info.on) {
+      st.lastRecycleAt = Date.now();
+      st.recycleCount = (st.recycleCount || 0) + 1;
+      st.lastClientJoinAt = 0;
+      st.recycleBlockedByStation = false;
+      ping();
+      return { ok: true, cleared: prevClients, info: hotspotInfo() };
+    }
+    return { ok: false, error: info.error || 'Could not restart booth Wi-Fi after clearing phones.', info };
+  }
+  return { ok: false, error: 'Could not clear idle phones.', info: hotspotInfo() };
+}
+
+// One-time elevated Windows boost: raises icssvc\Settings\WifiMaxPeers from 8 to 20 and restarts icssvc (no reboot needed).
+export async function hotspotRaiseLimit(target = TARGET_MAX_CLIENTS) {
+  if (!IS_WIN) return { ok: false, error: 'Raising the 8-phone limit is only needed on Windows.', info: hotspotInfo() };
+  if (st.driverUnsupported) return { ok: false, error: st.error || 'Wi-Fi adapter does not support hotspot.', info: hotspotInfo() };
+  if (st.busy) return { ok: false, error: 'The Wi-Fi is busy. Try again in a moment.', info: hotspotInfo() };
+  const maxVal = Math.max(8, Math.min(32, Math.floor(Number(target) || TARGET_MAX_CLIENTS)));
+  const c = cfgStore.get();
+  const wasUp = hotspotUp() || !!c.on;
+  st.busy = true;
+  st.error = '';
+  ping();
+  let dir = '';
+  let boosted = false;
+  let boostErr = '';
+  try {
+    // Gracefully stop the virtual SoftAP before restarting icssvc so fragile Wi-Fi drivers are never shocked mid-broadcast.
+    if (hotspotUp()) {
+      try {
+        await tether('stop', '', '', 20000);
+        await new Promise((r) => setTimeout(r, 1500));
+      } catch { /* proceed */ }
+    }
+    dir = mkdtempSync(join(tmpdir(), 'pb4u-boost-'));
+    const outFile = join(dir, 'boost.json');
+    const q = (s) => String(s).replace(/'/g, "''");
+    const script = BOOST_LIMIT_PS
+      .replace('@OUT@', () => q(outFile))
+      .replace('@MAX@', () => String(maxVal));
+    const enc = Buffer.from(script, 'utf16le').toString('base64');
+    const cmd = "Start-Process -FilePath powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','" + enc + "'";
+    const r = await runPs([...PS, '-Command', cmd], 90000);
+    let res = null;
+    try { res = JSON.parse(readFileSync(outFile, 'utf8').replace(/^\uFEFF/, '')); } catch { /* not written */ }
+    if (!res) {
+      const declined = /canceled by the user|cancelled/i.test(r.err || '');
+      boostErr = declined ? 'Cancelled. Click Allow up to 20 phones again and choose Yes when Windows asks.' : 'Could not update Windows hotspot limit (' + String(r.err || 'no answer').trim().slice(0, 120) + ').';
+    } else if (!res.ok) {
+      boostErr = 'Could not update Windows hotspot limit: ' + String(res.error || '').slice(0, 140);
+    } else {
+      st.regMaxClients = Number(res.wifiMaxPeers) || maxVal;
+      hwCache = null;   // refresh cached regMaxClients on next probe
+      boosted = true;
+      log('raised Windows WifiMaxPeers to ' + st.regMaxClients + ' (serviceRestarted=' + !!res.serviceRestarted + ')');
+    }
+  } catch (e) {
+    boostErr = 'Could not update Windows hotspot limit: ' + String(e && e.message || e).slice(0, 140);
+  } finally {
+    st.busy = false;
+    if (dir) { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } }
+    ping();
+  }
+  if (!boosted) return { ok: false, error: boostErr || 'Could not raise phone limit.', info: hotspotInfo() };
+  if (wasUp) {
+    const prevFails = st.fails;
+    const info = await hotspotStart();
+    if (!info.on) {
+      st.fails = prevFails;   // never lock the hotspot after a 1-time limit boost attempt
+      return { ok: false, error: info.error || 'Limit updated, but hotspot needs to be turned back on.', info: hotspotInfo() };
+    }
+    return { ok: true, wifiMaxPeers: st.regMaxClients, maxClients: st.maxClients, hwMaxClients: st.hwMaxClients, info };
+  }
+  try {
+    const preferOffline = !!(typeof offlineCheck === 'function' && offlineCheck());
+    const sr = await tether('status', '', '', 12000, preferOffline);
+    if (sr && sr.ok && typeof sr.maxClients === 'number' && sr.maxClients > 0) st.maxClients = sr.maxClients;
+  } catch { /* ignore */ }
+  ping();
+  return { ok: true, wifiMaxPeers: st.regMaxClients, maxClients: st.maxClients, hwMaxClients: st.hwMaxClients, info: hotspotInfo() };
 }
 
 // One-time set-up with admin rights (a single permission prompt).
@@ -715,7 +1114,12 @@ export async function hotspotSetup() {
     }
     if (!res.ok) { st.error = 'Set-up failed: ' + String(res.error || '').slice(0, 160); log('setup failed: ' + res.error); return { ok: false, error: st.error }; }
     st.needsSetup = false; st.fails = 0;
-    log('setup done');
+    if (Number(res.wifiMaxPeers) > 0) {
+      st.regMaxClients = Number(res.wifiMaxPeers);
+      if (st.maxClients < st.regMaxClients) st.maxClients = st.regMaxClients;
+      hwCache = null;
+    }
+    log('setup done' + (st.regMaxClients ? ' (WifiMaxPeers=' + st.regMaxClients + ')' : ''));
     return { ok: true };
   } catch (e) {
     st.error = 'Set-up failed: ' + String(e && e.message || e).slice(0, 160);

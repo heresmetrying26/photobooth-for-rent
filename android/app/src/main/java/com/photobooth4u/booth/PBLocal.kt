@@ -321,7 +321,7 @@ class PBLocal(private val ctx: Context) {
         if (!guestPrintOn) return@synchronized Pair(403, "{\"ok\":false,\"error\":\"off\"}")
         val f = folders[slug] ?: return@synchronized Pair(404, "{\"ok\":false,\"error\":\"event\"}")
         val dir = dirOf(f)
-        if (file.isEmpty() || file != File(file).name || file.startsWith(".") || !ROVE_RE.containsMatchIn(file) || !File(dir, file).isFile) {
+        if (file.isEmpty() || file != File(file).name || file.startsWith(".") || !ROVE_RE.containsMatchIn(file) || findFile(dir, file) == null) {
             return@synchronized Pair(404, "{\"ok\":false,\"error\":\"photo\"}")
         }
         val key = "$slug/$file"
@@ -619,7 +619,8 @@ class PBLocal(private val ctx: Context) {
         val r = synchronized(lock) { printReqs.firstOrNull { it.id == id } } ?: return ""
         val f = folderBySlug(r.slug) ?: return ""
         return try {
-            Base64.encodeToString(File(dirOf(f), r.file).readBytes(), Base64.NO_WRAP)
+            val target = findFile(dirOf(f), r.file) ?: File(dirOf(f), r.file)
+            Base64.encodeToString(target.readBytes(), Base64.NO_WRAP)
         } catch (e: Exception) {
             ""
         }
@@ -743,39 +744,65 @@ class PBLocal(private val ctx: Context) {
 
     fun dirOf(f: Folder): File = if (f.sub.isNotEmpty()) File(File(root, f.name), f.sub) else File(root, f.name)
 
+    fun photomanDirOf(f: Folder): File {
+        val pmRoot = File(root, "Photoman")
+        return if (f.sub.isNotEmpty()) File(File(pmRoot, f.name), f.sub) else File(pmRoot, f.name)
+    }
+
+    private fun photomanDirFor(dir: File): File? {
+        val rootPath = root.absolutePath.trimEnd(File.separatorChar) + File.separator
+        val dirPath = dir.absolutePath
+        if (!dirPath.startsWith(rootPath)) return null
+        val rel = dirPath.substring(rootPath.length).trimStart(File.separatorChar)
+        if (rel.isEmpty() || rel.startsWith("Photoman" + File.separator)) return null
+        return File(File(root, "Photoman"), rel)
+    }
+
     /** The name shown for the event on the guests' pages. */
     fun galleryTitle(f: Folder): String = if (f.sub.isNotEmpty()) f.name + " · " + f.sub else f.name
 
-    /** Finds a file in the event folder (root or category subfolder). */
-    fun findFile(dir: File, name: String): File? {
-        if (name.isEmpty() || name != File(name).name || name.startsWith(".")) return null
-        val rootFile = File(dir, name)
+    private fun findInBase(baseDir: File, name: String): File? {
+        val rootFile = File(baseDir, name)
         if (rootFile.isFile) return rootFile
-        val catFile = File(File(dir, categoryOf(name)), name)
+        val catFile = File(File(baseDir, categoryOf(name)), name)
         if (catFile.isFile) return catFile
         for (sub in SUBDIRS) {
-            val f = File(File(dir, sub), name)
+            val f = File(File(baseDir, sub), name)
             if (f.isFile) return f
         }
         return null
     }
 
-    /** The photos, GIFs and videos in an event folder, newest first. */
+    /** Finds a file in the event folder (booth or companion Photoman folder, root or category subfolder). */
+    fun findFile(dir: File, name: String): File? {
+        if (name.isEmpty() || name != File(name).name || name.startsWith(".")) return null
+        findInBase(dir, name)?.let { return it }
+        val pmDir = photomanDirFor(dir)
+        if (pmDir != null) findInBase(pmDir, name)?.let { return it }
+        return null
+    }
+
+    /** The photos, GIFs and videos in an event folder (including companion Photoman folder), newest first. */
     fun photosIn(dir: File): List<File> {
         val out = mutableListOf<File>()
         val seen = mutableSetOf<String>()
-        fun scan(d: File) {
-            val list = d.listFiles() ?: return
-            for (f in list) {
-                if (f.name.startsWith(".") || f.name == "done" || f.name == ".thumbs") continue
-                if (f.isDirectory) {
-                    if (d == dir && SUBDIRS.contains(f.name)) scan(f)
-                } else if (f.isFile && IMG_RE.containsMatchIn(f.name)) {
-                    if (seen.add(f.name)) out.add(f)
+        fun scanRoot(rootDir: File) {
+            fun scan(d: File) {
+                val list = d.listFiles() ?: return
+                for (f in list) {
+                    if (f.name.startsWith(".") || f.name == "done" || f.name == ".thumbs") continue
+                    if (f.isDirectory) {
+                        if (d == rootDir && SUBDIRS.contains(f.name)) scan(f)
+                    } else if (f.isFile && IMG_RE.containsMatchIn(f.name)) {
+                        if (seen.add(f.name)) out.add(f)
+                    }
                 }
             }
+            scan(rootDir)
         }
-        scan(dir)
+        scanRoot(dir)
+        val pmDir = photomanDirFor(dir)
+        if (pmDir != null && pmDir.isDirectory) scanRoot(pmDir)
         return out.sortedByDescending { it.lastModified() }
     }
 
@@ -859,16 +886,29 @@ class PBLocal(private val ctx: Context) {
         var name = File(safeName(str(o, "filename")).ifEmpty { "photo-" + System.currentTimeMillis() + ".jpg" }).name
         if (!IMG_RE.containsMatchIn(name)) name += ".jpg"
 
+        val isPhotoman = o.optBoolean("photoman", false) ||
+            str(o, "photoman") == "1" ||
+            str(o, "source").equals("photoman", ignoreCase = true)
+        val pmDir = photomanDirOf(f)
+        val baseDir = if (isPhotoman) pmDir else dir
         val cat = categoryOf(name)
-        val targetDir = File(dir, cat)
+        val targetDir = File(baseDir, cat)
         targetDir.mkdirs()
 
         val out: String
         synchronized(lock) {
-            // Never overwrite an earlier photo with the same name.
+            // Never overwrite an earlier photo with the same name (across both booth and Photoman folders).
             var candidate = name
             var i = 2
-            while (File(targetDir, candidate).exists() || File(dir, candidate).exists()) {
+            while (
+                File(targetDir, candidate).exists() ||
+                File(baseDir, candidate).exists() ||
+                File(dir, candidate).exists() ||
+                File(File(dir, cat), candidate).exists() ||
+                File(pmDir, candidate).exists() ||
+                File(File(pmDir, cat), candidate).exists() ||
+                findFile(dir, candidate) != null
+            ) {
                 candidate = name.replace(EXT_RE, " ($i)$1")
                 i++
             }
@@ -876,7 +916,8 @@ class PBLocal(private val ctx: Context) {
             out = candidate
         }
         noteGuestFile(str(o, "guestCode"), f.slug, out)
-        copyToGallery(out, f.name, bytes, cat)
+        val galleryEventDir = if (isPhotoman) "Photoman/${f.name}" else f.name
+        copyToGallery(out, galleryEventDir, bytes, cat)
 
         return JSONObject()
             .put("ok", true)

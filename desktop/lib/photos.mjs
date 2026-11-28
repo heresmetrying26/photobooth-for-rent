@@ -14,7 +14,7 @@ import { deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import { hotspotInfo } from './hotspot.mjs';
-import { attachBridgeUpgrade, handleBridgeHttp } from './guest-bridge.mjs';
+import { attachBridgeUpgrade, handleBridgeHttp, hasHotspotBridgeClient } from './guest-bridge.mjs';
 import { handleLanStationHttp } from './lan-print-station.mjs';
 
 const QR_JS_PATH = fileURLToPath(new URL('qr.js', import.meta.url));
@@ -85,13 +85,16 @@ export function initPhotos({ root, dataDir, makeThumb }) {
   mkdirSync(ROOT, { recursive: true });
   try { index = JSON.parse(readFileSync(INDEX_FILE, 'utf8')) || { folders: {} }; } catch { index = { folders: {} }; }
   if (!index.folders) index.folders = {};
+  photomanDirMap.clear();
+  invalidatePhotosCache();
+  for (const f of Object.values(index.folders)) registerPhotomanDir(f);
   try { codes = JSON.parse(readFileSync(CODES_FILE, 'utf8')) || {}; } catch { codes = {}; }
   try { stats = JSON.parse(readFileSync(STATS_FILE, 'utf8')) || { totals: {}, events: {} }; } catch { stats = { totals: {}, events: {} }; }
   if (!stats.totals) stats.totals = { captured: 0, rendered: 0, views: 0, downloads: 0, shares: 0 };
   if (!stats.events) stats.events = {};
 }
 export const photosRoot = () => ROOT;
-export function setPhotosRoot(dir) { ROOT = dir; mkdirSync(ROOT, { recursive: true }); }
+export function setPhotosRoot(dir) { ROOT = dir; invalidatePhotosCache(); mkdirSync(ROOT, { recursive: true }); }
 function saveIndex() { const t = INDEX_FILE + '.tmp'; writeFileSync(t, JSON.stringify(index, null, 1)); renameSync(t, INDEX_FILE); }
 
 export function resolveSlug(slug) {
@@ -126,7 +129,29 @@ const IMG_RE = /\.(jpe?g|png|webp|gif|mp4|webm|mov|m4v)$/i;
 const VIDEO_RE = /\.(mp4|webm|mov|m4v)$/i;
 const today = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
 
-// folderKey (+ subfolder) -> { slug, dir, name }
+const PHOTOMAN_ROOT_NAME = 'Photoman';
+const photomanDirMap = new Map();
+function dirOfFolder(f) {
+  return f.sub ? join(f.root, f.name, f.sub) : join(f.root, f.name);
+}
+function photomanDirOfFolder(f) {
+  return f.sub ? join(f.root, PHOTOMAN_ROOT_NAME, f.name, f.sub) : join(f.root, PHOTOMAN_ROOT_NAME, f.name);
+}
+function registerPhotomanDir(f) {
+  if (!f || !f.root || !f.name) return;
+  photomanDirMap.set(dirOfFolder(f), photomanDirOfFolder(f));
+}
+function photomanDirOfDir(dir) {
+  return (dir && photomanDirMap.get(dir)) || null;
+}
+function eventDirExists(dir) {
+  if (!dir) return false;
+  if (existsSync(dir)) return true;
+  const pDir = photomanDirOfDir(dir);
+  return !!(pDir && existsSync(pDir));
+}
+
+// folderKey (+ subfolder) -> { slug, dir, photomanDir, name }
 function folderFor(folderKey, subfolder) {
   const name = safeName(folderKey) || ('Photobooth ' + today());
   const sub = safeName(subfolder);
@@ -138,14 +163,17 @@ function folderFor(folderKey, subfolder) {
     saveIndex();
   }
   const f = index.folders[slug];
-  const dir = f.sub ? join(f.root, f.name, f.sub) : join(f.root, f.name);
+  const dir = dirOfFolder(f);
+  const photomanDir = photomanDirOfFolder(f);
+  registerPhotomanDir(f);
   mkdirSync(dir, { recursive: true });
-  return { slug, dir, name: f.sub ? f.name + ' / ' + f.sub : f.name };
+  return { slug, dir, photomanDir, name: f.sub ? f.name + ' / ' + f.sub : f.name };
 }
 function dirOf(slug) {
   const f = index.folders[slug];
   if (!f) return null;
-  return f.sub ? join(f.root, f.name, f.sub) : join(f.root, f.name);
+  registerPhotomanDir(f);
+  return dirOfFolder(f);
 }
 const SUBDIRS = ['Prints', 'Solo Shots', 'GIFs', '360 Videos'];
 
@@ -215,49 +243,80 @@ function categoryOf(name) {
   if (MASTER_RE.test(n)) return 'Masters';
   if (VIDEO_RE.test(n) || /^360_|_360\./i.test(n)) return '360 Videos';
   if (/\.gif$/i.test(n) || /_gif\./i.test(n)) return 'GIFs';
-  if (/_solo_\d+/i.test(n) || /_solo\./i.test(n)) return 'Solo Shots';
+  if (/_solo_\d+/i.test(n)) return 'Solo Shots';
   return 'Prints';
 }
 
-function findFileInDir(dir, name) {
-  if (!dir || !name || name !== basename(name) || name.startsWith('.')) return null;
-  if (MASTER_RE.test(name)) return null;   // operator-only master copies are never served
-  const rootPath = join(dir, name);
+function findInBaseDir(baseDir, name) {
+  if (!baseDir) return null;
+  const rootPath = join(baseDir, name);
   if (existsSync(rootPath)) return rootPath;
-  const catPath = join(dir, categoryOf(name), name);
+  const catPath = join(baseDir, categoryOf(name), name);
   if (existsSync(catPath)) return catPath;
   for (const sub of SUBDIRS) {
-    const p = join(dir, sub, name);
+    const p = join(baseDir, sub, name);
     if (existsSync(p)) return p;
   }
   return null;
 }
 
+function findFileInDir(dir, name) {
+  if (!dir || !name || name !== basename(name) || name.startsWith('.')) return null;
+  if (MASTER_RE.test(name)) return null;   // operator-only master copies are never served
+  const inMain = findInBaseDir(dir, name);
+  if (inMain) return inMain;
+  const pDir = photomanDirOfDir(dir);
+  if (pDir && pDir !== dir) {
+    const inPm = findInBaseDir(pDir, name);
+    if (inPm) return inPm;
+  }
+  return null;
+}
+
+// Short 2 s directory listing cache (invalidated immediately on photo/video save):
+// prevents 15-20 phones opening the gallery at once from running thousands of synchronous statSync() calls on the main thread.
+const PHOTOS_CACHE_TTL_MS = 2000;
+const photosInCache = new Map();
+function invalidatePhotosCache(dir) {
+  if (!dir) { photosInCache.clear(); return; }
+  photosInCache.delete(dir);
+}
+
 function photosIn(dir) {
+  const now = Date.now();
+  const cached = photosInCache.get(dir);
+  if (cached && now - cached.at < PHOTOS_CACHE_TTL_MS) return cached.files;
   const files = [];
   const seen = new Set();
-  const scan = (d) => {
-    let entries = [];
-    try { entries = readdirSync(d); } catch { return; }
-    for (const n of entries) {
-      if (n.startsWith('.') || n === 'done' || n === '.thumbs') continue;
-      const full = join(d, n);
-      let isD = false;
-      try { isD = statSync(full).isDirectory(); } catch { continue; }
-      if (isD) {
-        if (d === dir && SUBDIRS.includes(n)) scan(full);
-      } else if (IMG_RE.test(n)) {
-        if (!seen.has(n)) {
-          seen.add(n);
-          let t = 0;
-          try { t = statSync(full).mtimeMs; } catch { }
-          files.push({ n, t });
+  const scanRoot = (rootDir) => {
+    const scan = (d) => {
+      let entries = [];
+      try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+      for (const ent of entries) {
+        const n = ent.name;
+        if (n.startsWith('.') || n === 'done' || n === '.thumbs') continue;
+        const full = join(d, n);
+        if (ent.isDirectory()) {
+          if (d === rootDir && SUBDIRS.includes(n)) scan(full);
+        } else if (IMG_RE.test(n)) {
+          if (!seen.has(n)) {
+            seen.add(n);
+            let t = 0;
+            try { t = statSync(full).mtimeMs; } catch { }
+            files.push({ n, t });
+          }
         }
       }
-    }
+    };
+    scan(rootDir);
   };
-  scan(dir);
-  return files.sort((a, b) => b.t - a.t);
+  scanRoot(dir);
+  const pDir = photomanDirOfDir(dir);
+  if (pDir && pDir !== dir && existsSync(pDir)) scanRoot(pDir);
+  files.sort((a, b) => b.t - a.t);
+  if (photosInCache.size > 32) photosInCache.clear();
+  photosInCache.set(dir, { at: now, files });
+  return files;
 }
 function nextSession(dir) {
   let max = 0;
@@ -304,6 +363,24 @@ function writeFileAtomic(target, data) {
 }
 
 const thumbInFlight = new Map();
+const THUMB_CONCURRENCY = 2;   // cap parallel thumbnail decodes & yield between runs so 15-20 phones never lag Live View or UI
+let thumbRunning = 0;
+const thumbQueue = [];
+function runThumbSlot(fn) {
+  return new Promise((resolve, reject) => {
+    const start = () => {
+      thumbRunning++;
+      setImmediate(() => {
+        Promise.resolve().then(fn).then(resolve, reject).finally(() => {
+          thumbRunning--;
+          if (thumbQueue.length) thumbQueue.shift()();
+        });
+      });
+    };
+    if (thumbRunning < THUMB_CONCURRENCY) start();
+    else thumbQueue.push(start);
+  });
+}
 async function ensureThumb(dir, file, full) {
   const tdir = join(dir, '.thumbs');
   const tf = join(tdir, file.replace(/\.[a-z0-9]+$/i, '') + '.jpg');
@@ -313,7 +390,7 @@ async function ensureThumb(dir, file, full) {
   if (thumbInFlight.has(tf)) return thumbInFlight.get(tf);
   const p = (async () => {
     try {
-      const buf = await thumbFn(full);
+      const buf = await runThumbSlot(() => thumbFn(full));
       if (buf && buf.length) { mkdirSync(tdir, { recursive: true }); writeFileAtomic(tf, buf); return tf; }
     } catch { /* fallback to full */ }
     finally { thumbInFlight.delete(tf); }
@@ -323,11 +400,19 @@ async function ensureThumb(dir, file, full) {
   return p;
 }
 
+function fileExistsInEvent(f, cat, candidate) {
+  if (existsSync(join(f.dir, candidate)) || existsSync(join(f.dir, cat, candidate))) return true;
+  if (f.photomanDir && f.photomanDir !== f.dir) {
+    if (existsSync(join(f.photomanDir, candidate)) || existsSync(join(f.photomanDir, cat, candidate))) return true;
+  }
+  return cat !== 'Masters' && !!findFileInDir(f.dir, candidate);
+}
+
 export async function driveRequest(body) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Bad request' };
   const f = folderFor(body.folderKey, body.subfolder);
   const folderUrl = 'pb4u-local:' + f.slug;
-  if (body.resolveOnly) return { ok: true, folderUrl, folderName: f.name, nextSessionNumber: nextSession(f.dir), folderPath: f.dir };
+  if (body.resolveOnly) return { ok: true, folderUrl, folderName: f.name, nextSessionNumber: nextSession(f.dir), folderPath: f.dir, photomanPath: f.photomanDir };
   let buf = Buffer.isBuffer(body.buffer) ? body.buffer : null;
   if (!buf) {
     const m = /^[A-Za-z0-9+/=\s]+$/.test(String(body.imageBase64 || '')) ? body.imageBase64 : null;
@@ -337,14 +422,17 @@ export async function driveRequest(body) {
   if (!buf.length) return { ok: false, error: 'No photo' };
   let name = basename(safeName(body.filename) || ('photo-' + Date.now() + '.jpg'));
   if (!IMG_RE.test(name)) name += '.jpg';
+  const isPhotoman = body.photoman === true || body.photoman === '1' || body.photoman === 'true' || body.source === 'photoman';
+  const baseDir = isPhotoman ? f.photomanDir : f.dir;
   const cat = categoryOf(name);
-  const targetDir = join(f.dir, cat);
+  const targetDir = join(baseDir, cat);
   mkdirSync(targetDir, { recursive: true });
   let out = name, i = 2;
-  while (existsSync(join(targetDir, out)) || existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
+  while (fileExistsInEvent(f, cat, out)) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
   writeFileAtomic(join(targetDir, out), buf);
+  invalidatePhotosCache(f.dir);
   if (cat !== 'Masters') noteGuestFile(body.guestCode, f.slug, out);   // a master belongs to no guest's page
-  return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl, folderName: f.name, folderPath: f.dir };
+  return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl, folderName: f.name, folderPath: f.dir, photomanPath: f.photomanDir };
 }
 export function folderPathOf(folderUrl) {
   const m = /^pb4u-local:([A-Za-z0-9]+)/.exec(String(folderUrl || ''));
@@ -356,7 +444,7 @@ let lastHotspotIp = '';
 let lastHotspotAt = 0;
 export function lanAddress(nets = networkInterfaces(), hs = undefined) {
   const hsInfo = hs !== undefined ? hs : (() => { try { return hotspotInfo(); } catch { return null; } })();
-  const wantHotspot = !!(hsInfo && hsInfo.wanted && hsInfo.on);
+  const wantHotspot = !!(hsInfo && hsInfo.wanted && (hsInfo.on || hsInfo.recycling));
   const cands = [];
   for (const [name, list] of Object.entries(nets || {})) {
     for (const a of list || []) {
@@ -459,10 +547,16 @@ function pipeStreamSafe(rs, res) {
 }
 
 function serveFile(req, res, full, type, extra) {
-  let size;
-  try { size = statSync(full).size; } catch { return send(res, 404, 'text/plain', 'Not found'); }
-  const h = { 'content-type': type, 'accept-ranges': 'bytes', 'cache-control': 'max-age=600', 'x-content-type-options': 'nosniff', ...(extra || {}) };
+  let st;
+  try { st = statSync(full); } catch { return send(res, 404, 'text/plain', 'Not found'); }
+  const size = st.size;
+  const etag = 'W/"' + size.toString(16) + '-' + Math.trunc(st.mtimeMs || 0).toString(16) + '"';
+  const h = { 'content-type': type, 'accept-ranges': 'bytes', 'cache-control': 'max-age=600', 'etag': etag, 'x-content-type-options': 'nosniff', ...(extra || {}) };
   const rg = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+  if (!rg && !(extra && extra['content-disposition']) && req.headers['if-none-match'] === etag) {
+    res.writeHead(304, h);
+    return res.end();
+  }
   if (rg && (rg[1] !== '' || rg[2] !== '')) {
     let a, b;
     if (rg[1] === '') { a = Math.max(0, size - Number(rg[2])); b = size - 1; }
@@ -552,6 +646,7 @@ export function spinShare(name, folderKey, subfolder, outName, look) {
   } catch {
     copyFileSync(src, join(f.dir, out));
   }
+  invalidatePhotosCache(f.dir);
   if (!/(\.gif|_square\.mp4)$/i.test(out)) recordStat(f.slug, 'rendered', out);       // the numbers count videos, not their GIFs or square clips
   writeLook(f.dir, out, look);
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl: 'pb4u-local:' + f.slug, folderName: f.name, folderPath: f.dir };
@@ -1597,7 +1692,7 @@ export function studioFolders(folderKey, subfolder) {
   const out = [];
   for (const slug of Object.keys(index.folders)) {
     const f = index.folders[slug], dir = dirOf(slug);
-    if (!dir || !existsSync(dir)) continue;
+    if (!eventDirExists(dir)) continue;
     out.push({ slug, name: f.sub ? f.name + ' / ' + f.sub : f.name, at: f.at || 0, current: f.id === curId && f.root === ROOT });
   }
   return out.sort((a, b) => (b.current - a.current) || (b.at - a.at)).slice(0, 60);
@@ -1787,7 +1882,7 @@ function handlePrintReq(req, res, pm, only) {
   let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
   if (only && !only.includes(file)) return fail(404, 'photo');
   const dir = dirOf(pm[1]);
-  if (!dir || !existsSync(dir)) return fail(404, 'event');
+  if (!eventDirExists(dir)) return fail(404, 'event');
   if (!file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !findFileInDir(dir, file)) return fail(404, 'photo');
   const key = pm[1] + '/' + file;
   if (printReqs.some((r) => r.slug === pm[1] && r.file === file)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, waiting: true }));
@@ -1810,7 +1905,7 @@ function handleOwn(req, res, url, om) {
     return send(res, 200, 'text/html; charset=utf-8', page('Your photos', '<div class="one"><h1>Your photos are on their way</h1><p class="sub">They appear here in a few seconds. You can keep this page open.</p></div><script>setTimeout(function(){location.reload()},4000)</script>'));
   }
   const dir = dirOf(c.slug);
-  if (!dir || !existsSync(dir)) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This event isn’t on this booth anymore.</p>'));
+  if (!eventDirExists(dir)) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This event isn’t on this booth anymore.</p>'));
   if (om[2] === 'print') return handlePrintReq(req, res, [null, c.slug, om[3]], c.files);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
   if (om[2] === 'f') {
@@ -1870,7 +1965,9 @@ function savingTipHtml(slug, file, evName) {
     'if(isIos&&it){it.style.display="block";if(gt)gt.style.display="none"}' +
     'else if(isAndroid&&at){at.style.display="block";if(gt)gt.style.display="none"}' +
     'var sn=document.getElementById("pbSavedNote");' +
-    '[].forEach.call(document.querySelectorAll("a[download],#btnDl"),function(a){a.addEventListener("click",function(){if(sn)setTimeout(function(){sn.style.display="block"},900)})});' +
+    'function showSaved(){if(sn)sn.style.display="block"}' +
+    '[].forEach.call(document.querySelectorAll("a[download],#btnDl"),function(a){a.addEventListener("click",function(){setTimeout(showSaved,900)})});' +
+    '[].forEach.call(document.querySelectorAll(".one img,.one video"),function(el){var lp=0;el.addEventListener("contextmenu",function(){setTimeout(showSaved,1200)});el.addEventListener("touchstart",function(){lp=setTimeout(showSaved,1400)},{passive:true});el.addEventListener("touchend",function(){clearTimeout(lp)},{passive:true});el.addEventListener("touchmove",function(){clearTimeout(lp)},{passive:true})});' +
     '[].forEach.call(document.querySelectorAll(".one img"),function(im){var base=im.getAttribute("src")||"",tries=0;im.addEventListener("error",function(){if(tries<4){tries++;setTimeout(function(){im.src=base+(base.indexOf("?")<0?"?":"&")+"_r="+tries+"_"+Date.now()},900*tries);return}if(im.dataset.errShown)return;im.dataset.errShown="1";var b=document.createElement("div");b.className="tip";b.style.cssText="background:#fff4e6;border:1px solid #f0cfa0;border-radius:10px;padding:10px 12px;text-align:center";b.innerHTML="<b>Photo couldn’t load over Wi-Fi.</b><br>iPhone user? Turn <b>Mobile Data OFF</b> briefly, check you’re still on Booth Wi-Fi, then tap below.<br><button type=\\"button\\" class=\\"btn\\" style=\\"margin-top:10px\\" onclick=\\"location.reload()\\">Reload photo</button>";im.parentNode.insertBefore(b,im.nextSibling)})});' +
     '})()</script>';
 }
@@ -2660,13 +2757,13 @@ function handleStation(req, res, url, stm) {
   if (sub === 'list') {
     if (!slug) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug: null, name: '', files: [] }), cors);
     const dir = dirOf(slug);
-    if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', files: [] }), cors);
+    if (!eventDirExists(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', files: [] }), cors);
     const ev = index.folders[slug];
     const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
     const list = photosIn(dir);
     const isSolo = (n) => /_solo_\d+/i.test(n);
     const getPrefix = (filename) => {
-      const pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|clip|[0-9]+up)/i.exec(filename);
+      const pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|pm|myframe|framesheet|cut|clip|[0-9]+up)/i.exec(filename);
       if (pm) return pm[1];
       const pm2 = /^(\d+)[._]/i.exec(filename);
       return pm2 ? pm2[1] : filename;
@@ -2705,7 +2802,7 @@ function handleWall(req, res, url, wlm) {
   if (sub === 'feed') {
     if (!slug) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug: null, name: '', cue: getWallCue(), videos: [] }), cors);
     const dir = dirOf(slug);
-    if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', cue: getWallCue(), videos: [] }), cors);
+    if (!eventDirExists(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', cue: getWallCue(), videos: [] }), cors);
     const ev = index.folders[slug];
     const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
     const list = photosIn(dir).filter(({ n }) => VIDEO_RE.test(n) && !/_guestbook/i.test(n));
@@ -3012,10 +3109,69 @@ function handleGuide(req, res, url) {
   return send(res, 200, 'text/html; charset=utf-8', guideHtml());
 }
 
+// Hotspot client activity tracker: lets hotspot.mjs know when a guest phone on 192.168.137.*
+// is actively downloading (so auto-recycle NEVER interrupts a save) and whether a persistent booth
+// tablet/station (iPad camera, Sharing Station, Print Station, 360 Arm, Bridge) is on Booth Wi-Fi.
+const HS_STATION_RE = /^\/(?:ipad|bridge|station|qr|share|wall|send|lan-station)(?:\/|$)/i;
+const HS_STATION_TTL_MS = 65_000;
+const hsTraffic = { activeTransfers: 0, lastGuestActivityAt: 0, stationSeenAt: new Map() };
+
+export function isHotspotClientIp(addr) {
+  const ip = String(addr || '').replace(/^::ffff:/, '').trim();
+  return /^192\.168\.137\.(?!1$)\d+$/.test(ip);
+}
+export function noteHotspotTraffic(remoteIp, pathname, now = Date.now()) {
+  if (!isHotspotClientIp(remoteIp)) return null;
+  const ip = String(remoteIp).replace(/^::ffff:/, '').trim();
+  const p = String(pathname || '/').split('?')[0];
+  if (HS_STATION_RE.test(p)) {
+    hsTraffic.stationSeenAt.set(ip, now);
+    return 'station';
+  }
+  hsTraffic.lastGuestActivityAt = now;
+  return 'guest';
+}
+export function getHotspotTrafficState(now = Date.now()) {
+  let stationOnHotspot = false;
+  for (const [ip, at] of hsTraffic.stationSeenAt) {
+    if (now - at <= HS_STATION_TTL_MS) stationOnHotspot = true;
+    else hsTraffic.stationSeenAt.delete(ip);
+  }
+  if (!stationOnHotspot) {
+    try { if (hasHotspotBridgeClient()) stationOnHotspot = true; } catch { /* ignore */ }
+  }
+  return {
+    activeTransfers: Math.max(0, hsTraffic.activeTransfers),
+    lastGuestActivityAt: hsTraffic.lastGuestActivityAt,
+    stationOnHotspot
+  };
+}
+export function resetHotspotTrafficForTest() {
+  hsTraffic.activeTransfers = 0;
+  hsTraffic.lastGuestActivityAt = 0;
+  hsTraffic.stationSeenAt.clear();
+}
+function trackHotspotHttp(req, res) {
+  const ip = req && req.socket && req.socket.remoteAddress;
+  const kind = noteHotspotTraffic(ip, req && req.url);
+  if (kind !== 'guest') return;
+  hsTraffic.activeTransfers++;
+  let done = false;
+  const dec = () => {
+    if (done) return;
+    done = true;
+    hsTraffic.activeTransfers = Math.max(0, hsTraffic.activeTransfers - 1);
+    hsTraffic.lastGuestActivityAt = Date.now();
+  };
+  res.once('finish', dec);
+  res.once('close', dec);
+}
+
 let lanHandler = null;
 export function setLanHandler(fn) { lanHandler = fn; }
 
 async function handleShare(req, res) {
+  trackHotspotHttp(req, res);
   if (lanHandler && await lanHandler(req, res)) return;
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
@@ -3082,7 +3238,7 @@ async function handleShare(req, res) {
   if (ljm) {
     if (guestView === 'only' && !isLocalReq(req)) return send(res, 403, 'application/json', JSON.stringify({ ok: false, error: 'private' }), { 'access-control-allow-origin': '*' });
     const d = dirOf(ljm[1]);
-    if (!d || !existsSync(d)) return send(res, 404, 'application/json', JSON.stringify({ ok: false, error: 'not-found' }), { 'access-control-allow-origin': '*' });
+    if (!eventDirExists(d)) return send(res, 404, 'application/json', JSON.stringify({ ok: false, error: 'not-found' }), { 'access-control-allow-origin': '*' });
     const ev = index.folders[ljm[1]];
     const nm = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : 'Event photos';
     return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, name: nm, files: photosIn(d).map(({ n, t }) => ({ n, t })), print: guestPrintOn }), { 'access-control-allow-origin': '*' });
@@ -3090,7 +3246,7 @@ async function handleShare(req, res) {
   const m = /^\/e\/([A-Za-z0-9]{6,20})(?:\/(p|f|t|s)\/([^/]+))?\/?$/.exec(url.pathname);
   if (!m) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This link isn’t on this booth.</p>'));
   const dir = dirOf(m[1]);
-  if (!dir || !existsSync(dir)) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This event isn’t on this booth anymore.</p>'));
+  if (!eventDirExists(dir)) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This event isn’t on this booth anymore.</p>'));
   const ev = index.folders[m[1]];
   const evName = ev.sub ? ev.name + ' · ' + ev.sub : ev.name;
   if (!m[2]) {
@@ -3144,7 +3300,7 @@ async function handleShare(req, res) {
     let prefix; try { prefix = decodeURIComponent(m[3]); } catch { prefix = ''; }
     const list = photosIn(dir);
     function getPrefix(name) {
-      const pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|clip|[0-9]+up)/i.exec(name);
+      const pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|pm|myframe|framesheet|cut|clip|[0-9]+up)/i.exec(name);
       if (pm) return pm[1];
       const pm2 = /^(\d+)[._]/i.exec(name);
       return pm2 ? pm2[1] : name;
@@ -3234,6 +3390,7 @@ export function startShareServer() {
       s.requestTimeout = 120_000;
       s.keepAliveTimeout = 65_000;
       s.headersTimeout = 70_000;
+      s.maxConnections = 160;   // headroom for 20+ phones + booth stations while preventing FD/RAM exhaustion on budget laptops
       s.on('connection', (sock) => { try { sock.setNoDelay(true); sock.setKeepAlive(true, 15_000); } catch { /* ignore */ } });
       s.once('error', () => { try { s.close(); } catch { /* ignore */ } tryNext(); });
       s.listen(port, '0.0.0.0', () => { server = s; sharePort = port; attachBridgeUpgrade(s); resolve(port); });

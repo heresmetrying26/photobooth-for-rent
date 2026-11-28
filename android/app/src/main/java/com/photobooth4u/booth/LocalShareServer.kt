@@ -303,7 +303,7 @@ class LocalShareServer(private val store: PBLocal) {
 
         val folder = store.folderBySlug(slug)
         val dir = if (folder != null) store.dirOf(folder) else null
-        if (folder == null || dir == null || !dir.isDirectory) {
+        if (folder == null || dir == null || (!dir.isDirectory && !store.photomanDirOf(folder).isDirectory)) {
             if (isList) return sendBytes(out, 404, "Not Found", "application/json; charset=utf-8", "{\"error\":\"not found\"}".toByteArray(Charsets.UTF_8), headOnly, "no-store")
             return notFoundPage(out, "This event isn’t on this booth anymore.", headOnly)
         }
@@ -610,7 +610,7 @@ class LocalShareServer(private val store: PBLocal) {
         if (method != "GET" && !headOnly) return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
         val folder = store.folderBySlug(c.slug)
         val dir = if (folder != null) store.dirOf(folder) else null
-        if (folder == null || dir == null || !dir.isDirectory) return notFoundPage(out, "This event isn’t on this booth anymore.", headOnly)
+        if (folder == null || dir == null || (!dir.isDirectory && !store.photomanDirOf(folder).isDirectory)) return notFoundPage(out, "This event isn’t on this booth anymore.", headOnly)
         if (kind == "f") {
             if (!c.files.contains(name)) return sendText(out, 404, "Not Found", "Not found", headOnly)
             val file = store.findFile(dir, name)

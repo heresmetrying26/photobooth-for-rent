@@ -254,7 +254,7 @@ final class SpinArmGateViewController: UIViewController, UITextFieldDelegate {
         stack.addArrangedSubview(title)
 
         let hint = UILabel()
-        hint.text = "Enter your photobooth4u code with -360 at the end (e.g. PB-XXXX-XXXX-XXXX-360) so this phone does not use a device slot on your account."
+        hint.text = "Enter your regular photobooth4u access code (e.g. PB-XXXX-XXXX-XXXX). Activating in 360 Arm Cam automatically uses 0 device slots on your account."
         hint.font = .systemFont(ofSize: 13, weight: .regular)
         hint.textColor = mutedText
         hint.numberOfLines = 0
@@ -267,9 +267,9 @@ final class SpinArmGateViewController: UIViewController, UITextFieldDelegate {
         stack.addArrangedSubview(noticeLabel)
 
         codeField.delegate = self
-        codeField.placeholder = "PB-XXXX-XXXX-XXXX-360"
+        codeField.placeholder = "PB-XXXX-XXXX-XXXX"
         codeField.attributedPlaceholder = NSAttributedString(
-            string: "PB-XXXX-XXXX-XXXX-360",
+            string: "PB-XXXX-XXXX-XXXX",
             attributes: [.foregroundColor: mutedText.withAlphaComponent(0.55)]
         )
         codeField.font = .monospacedSystemFont(ofSize: 16, weight: .semibold)
@@ -450,18 +450,11 @@ final class SpinArmGateViewController: UIViewController, UITextFieldDelegate {
     }
 
     private func updateSuffixChipTitle() {
-        let text = codeField.text ?? ""
-        if has360Suffix(text) {
-            suffixChipBtn.setTitle("✓ -360 suffix added · uses 0 device slots", for: .normal)
-            suffixChipBtn.setTitleColor(okGreen, for: .normal)
-            suffixChipBtn.backgroundColor = okGreen.withAlphaComponent(0.14)
-            suffixChipBtn.layer.borderColor = okGreen.withAlphaComponent(0.5).cgColor
-        } else {
-            suffixChipBtn.setTitle("+ Add -360 (uses 0 device slots)", for: .normal)
-            suffixChipBtn.setTitleColor(creamText, for: .normal)
-            suffixChipBtn.backgroundColor = accentRed.withAlphaComponent(0.18)
-            suffixChipBtn.layer.borderColor = accentRed.withAlphaComponent(0.55).cgColor
-        }
+        suffixChipBtn.setTitle("✓ Automatically uses 0 device slots (no -360 needed)", for: .normal)
+        suffixChipBtn.setTitleColor(okGreen, for: .normal)
+        suffixChipBtn.backgroundColor = okGreen.withAlphaComponent(0.14)
+        suffixChipBtn.layer.borderColor = okGreen.withAlphaComponent(0.5).cgColor
+        suffixChipBtn.isUserInteractionEnabled = false
     }
 
     private func configureSpinContext(standaloneAllowed: Bool) {
@@ -529,7 +522,7 @@ final class SpinArmGateViewController: UIViewController, UITextFieldDelegate {
         view.endEditing(true)
         let code = (codeField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !code.isEmpty else {
-            errorLabel.text = "Enter your activation code first (add -360 to use 0 device slots)."
+            errorLabel.text = "Enter your activation code first."
             errorLabel.isHidden = false
             return
         }

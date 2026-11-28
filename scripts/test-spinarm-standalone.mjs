@@ -140,11 +140,11 @@ await test('spin360CompanionLicence signs valid Ed25519 360-only licence with 0 
   assert.equal(auth.status, 401);
 });
 
-await test('netlify/functions/license.mjs enforces companion-only -360, slot-free activation, and live checkin', () => {
+await test('netlify/functions/license.mjs enforces automatic 0-slot standalone activation (plain code or -360) and live checkin', () => {
   const src = read('netlify/functions/license.mjs');
   assert.match(src, /parseSpin360Code\(b\.code\)/);
   assert.match(src, /if \(isSpin360Suffix && !isSpin360App\)/);
-  assert.match(src, /if \(!extrasOf\(rec\)\.spin360\) return json\(\{ error: NO_SPIN360/);
+  assert.match(src, /if \(isSpin360App\) \{[\s\S]*if \(!extrasOf\(rec\)\.spin360\) return json\(\{ error: NO_SPIN360/);
   assert.match(src, /spin360CompanionLicence\(key, rec,/);
   assert.match(src, /if \(p\.feat && p\.feat\.spin360Only\)/);
   assert.match(src, /await dropMap\(p\.lid\);\s*return json\(\{ ok: true, slotFree: true \}\);/);

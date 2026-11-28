@@ -706,7 +706,10 @@ print(f'PIXEL_OK border={br} center={ct}')
     const fullCheck = LIC.activateOn(structuredClone(rec), { mid: 'IPD-PHONE-360-9999', name: 'iPhone 15 Pro Max', os: 'ios', ver: '1.0.0' }, now);
     assert.equal(fullCheck.status, 403, 'Regular activation must be blocked when 1/1 device slot is full');
 
-    // -360 suffix activation parses cleanly and issues a valid Ed25519 spin360Only licence WITHOUT touching rec.devices!
+    // Both plain code (no -360 needed) and optional -360 suffix resolve to the parent code and issue a 0-slot spin360Only licence!
+    const parsedPlain = LIC.parseSpin360Code('PB-TEST-360A-BCD2');
+    assert.equal(parsedPlain.isSpin360Suffix, false);
+    assert.equal(CORE.normCode(parsedPlain.baseCode), rec.key);
     const parsed = LIC.parseSpin360Code('PB-TEST-360A-BCD2-360');
     assert.equal(parsed.isSpin360Suffix, true);
     assert.equal(CORE.normCode(parsed.baseCode), rec.key);

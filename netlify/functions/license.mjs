@@ -59,9 +59,9 @@ export default safe(async (req, context) => {
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact us.' }, 403);
     if (rec.kind === 'bonus') return json({ error: 'Bonus codes work in the web booth only. Use your main booking code.' }, 400);
     const sd = await getShutdown();
-    // Slot-free 360 Arm Cam activation (<CODE>-360 from the standalone 360 Arm Cam app):
+    // Slot-free 360 Arm Cam activation from the standalone 360 Arm Cam app (plain code or optional -360 suffix):
     // Validates the parent code and extras.spin360, then issues a 360-only licence WITHOUT occupying any device slot.
-    if (isSpin360Suffix) {
+    if (isSpin360App) {
       if (!extrasOf(rec).spin360) return json({ error: NO_SPIN360, code: 'no-spin360' }, 403);
       if (rec.status !== 'active') {
         const why = startCode(rec, now);
@@ -73,9 +73,6 @@ export default safe(async (req, context) => {
       const issued = spin360CompanionLicence(key, rec, { mid, name: b.name, os: b.os, ver: b.ver }, now, sd.on);
       await saveMap(issued.lid, key, mid);
       return json({ ok: true, licence: issued.licence, spin360Only: true, slotFree: true, appMode: 'offline', app: await liveApp() });
-    }
-    if (isSpin360App && !extrasOf(rec).spin360) {
-      return json({ error: NO_SPIN360, code: 'no-spin360' }, 403);
     }
     // In shutdown mode every Lifetime code gets the Offline App (agreement s.6).
     // Online-capable Windows / Mac Desktop apps (onlineCapable: true) can also activate Online-only codes

@@ -264,7 +264,7 @@ class SpinArmGateActivity : AppCompatActivity() {
         card.addView(title)
 
         val hint = TextView(this).apply {
-            text = "Enter your photobooth4u code with -360 at the end (e.g. PB-XXXX-XXXX-XXXX-360) so this phone does not use a device slot on your account."
+            text = "Enter your regular photobooth4u access code (e.g. PB-XXXX-XXXX-XXXX). Activating in 360 Arm Cam automatically uses 0 device slots on your account."
             setTextColor(MUTED_TEXT)
             textSize = 13f
         }
@@ -278,7 +278,7 @@ class SpinArmGateActivity : AppCompatActivity() {
         card.addView(noticeLabel, topMarginParams(10))
 
         codeField = EditText(this).apply {
-            setHint("PB-XXXX-XXXX-XXXX-360")
+            setHint("PB-XXXX-XXXX-XXXX")
             setHintTextColor(0x88B8B0A8.toInt())
             setTextColor(CREAM_TEXT)
             textSize = 16f
@@ -444,16 +444,10 @@ class SpinArmGateActivity : AppCompatActivity() {
     }
 
     private fun updateSuffixChip() {
-        val txt = (codeField.text?.toString() ?: "").trim().uppercase()
-        if (txt.endsWith("-360")) {
-            suffixChipBtn.text = "✓ -360 suffix added · uses 0 device slots"
-            suffixChipBtn.setTextColor(OK_GREEN)
-            suffixChipBtn.background = roundedBg(0x2434C759, 0x8034C759.toInt(), 1, 10)
-        } else {
-            suffixChipBtn.text = "+ Add -360 (uses 0 device slots)"
-            suffixChipBtn.setTextColor(CREAM_TEXT)
-            suffixChipBtn.background = roundedBg(0x2EC93D27, 0x8CC93D27.toInt(), 1, 10)
-        }
+        suffixChipBtn.text = "✓ Automatically uses 0 device slots (no -360 needed)"
+        suffixChipBtn.setTextColor(OK_GREEN)
+        suffixChipBtn.background = roundedBg(0x2434C759, 0x8034C759.toInt(), 1, 10)
+        suffixChipBtn.isClickable = false
     }
 
     private fun refreshState() {
@@ -533,7 +527,7 @@ class SpinArmGateActivity : AppCompatActivity() {
         hideKeyboard()
         val code = (codeField.text?.toString() ?: "").trim()
         if (code.isEmpty()) {
-            errorLabel.text = "Enter your activation code first (add -360 to use 0 device slots)."
+            errorLabel.text = "Enter your activation code first."
             errorLabel.visibility = View.VISIBLE
             return
         }

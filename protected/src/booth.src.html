@@ -55629,6 +55629,7 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
       var welcomeOutPick = false;
       var welcomeGuestDataUrl = '';
       var guestWelcomeDefaultOut = null;
+      var guestWelcomeForcedOut = null;
       var guestWelcomeStyle = 'full';       // guest screen between guests (laptop + guest screen): full = picture only | panel = with logo & welcome text
       var welcomeBtnOn = true;
       var welcomeSampleOn = true;
@@ -57318,12 +57319,15 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
         var sso = document.getElementById('shareStationHandoffOverlay');
         if (sso) sso.hidden = true;
         state = 'idle';
-        if (!(opts && opts.fromBeginFlow) && typeof guestWelcomeDefaultOut === 'string' && guestWelcomeDefaultOut) {
-          var _restoreOut = guestWelcomeDefaultOut;
-          guestWelcomeDefaultOut = null;
-          if (typeof outputMode !== 'undefined' && outputMode !== _restoreOut) {
-            outputMode = _restoreOut;
-            try { if (typeof refreshOutputModeUI === 'function') refreshOutputModeUI(); } catch (e) { }
+        if (!(opts && opts.fromBeginFlow)) {
+          guestWelcomeForcedOut = null;
+          if (typeof guestWelcomeDefaultOut === 'string' && guestWelcomeDefaultOut) {
+            var _restoreOut = guestWelcomeDefaultOut;
+            guestWelcomeDefaultOut = null;
+            if (typeof outputMode !== 'undefined' && outputMode !== _restoreOut) {
+              outputMode = _restoreOut;
+              try { if (typeof refreshOutputModeUI === 'function') refreshOutputModeUI(); } catch (e) { }
+            }
           }
         }
         guestDecor = [];
@@ -72167,7 +72171,8 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
             ? ((typeof isGifAllowed === 'function' && isGifAllowed()) ? 'gif' : 'photo')
             : (id === 'flipbook' ? ((typeof extraOn === 'function' && extraOn('flipbook')) ? 'flipbook' : 'photo') : 'photo');
           if (typeof outputMode !== 'undefined') {
-            guestWelcomeDefaultOut = outputMode;
+            if (guestWelcomeDefaultOut == null) guestWelcomeDefaultOut = outputMode;
+            guestWelcomeForcedOut = nextMode;
             outputMode = nextMode;
             try { if (typeof refreshOutputModeUI === 'function') refreshOutputModeUI(); } catch (err) { }
           }
@@ -81250,6 +81255,9 @@ var gifSlideFrame = 'card';   // slideshow frame: 'card' (Polaroid card, shaped 
           }
           if (s.outputMode === 'flipbook') { outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
+          if (opts && opts.fastGuest && typeof guestWelcomeForcedOut === 'string' && guestWelcomeForcedOut) {
+            outputMode = guestWelcomeForcedOut;
+          }
           if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; }
           if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session' || s.gifMotionStyle === 'slideshow') { gifMotionStyle = s.gifMotionStyle; }
           if (['white', 'cream', 'black', 'none'].indexOf(s.gifSlideCard) >= 0) { gifSlideCard = s.gifSlideCard; }
